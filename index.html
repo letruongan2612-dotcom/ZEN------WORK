@@ -39,6 +39,11 @@ function App() {
   const [shifts, setShifts] = useState(DEFAULT_SHIFTS);
   const [shift, setShift] = useState("Sáng");
   const [areas, setAreas] = useState(["Quầy Bar", "Thu Ngân", "Pha Chế", "Vệ Sinh Chung"]);
+  
+  // Khai báo thiếu state tasks và violations trước đó
+  const [tasks, setTasks] = useState([]);
+  const [violations, setViolations] = useState([]);
+
   const [staffMap, setStaffMap] = useState({ "Sáng": ["An", "Bình"], "Tối": ["Chi", "Dũng"] });
   const [pinCode, setPinCode] = useState("1234");
 
@@ -290,8 +295,8 @@ function App() {
         onClick: () => setShowStaffManager(!showStaffManager),
         style: { fontSize: 13, fontWeight: 700, color: '#1B4332', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }
       }, 
-        <span>👥 Quản lý nhân sự Ca {shift} <span style={{fontSize: 11, fontWeight: 400, color: '#4F772D', fontStyle: 'italic'}}>(Bấm vào đây để {showStaffManager ? 'thu gọn' : 'mở rộng'})</span></span>,
-        <span>{showStaffManager ? '▲' : '▼'}</span>
+        React.createElement('span', null, "👥 Quản lý nhân sự Ca ", shift, " ", React.createElement('span', { style: { fontSize: 11, fontWeight: 400, color: '#4F772D', fontStyle: 'italic' } }, `(Bấm vào đây để ${showStaffManager ? 'thu gọn' : 'mở rộng'})`)),
+        React.createElement('span', null, showStaffManager ? '▲' : '▼')
       ),
       showStaffManager && React.createElement('div', { style: { marginTop: 8 } },
         React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 } },
@@ -793,7 +798,7 @@ function App() {
                 image: vImage,
                 confirmed: false
               };
-              persist(undefined, [newV, violations]);
+              persist(undefined, [newV, ...violations]);
               setVAssignee('');
               setVText('');
               setVPenalty('');
