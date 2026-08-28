@@ -111,6 +111,19 @@ function App() {
     fetchData();
   }, []);
 
+  // Tự động nhận diện ca của nhân viên đang đăng nhập dựa vào staffMap
+  useEffect(() => {
+    if (mode === 'staff' && myName) {
+      for (const s of shifts) {
+        const list = staffMap[s] || [];
+        if (list.map(n => n.toLowerCase()).includes(myName.toLowerCase())) {
+          setShift(s);
+          break;
+        }
+      }
+    }
+  }, [myName, staffMap, mode, shifts]);
+
   const persist = async (nextTasks, nextViolations, nextAreas, nextStaffMap, nextShifts, nextPin) => {
     const payload = {
       tasks: nextTasks !== undefined ? nextTasks : tasks,
@@ -227,17 +240,31 @@ function App() {
     );
   }
 
+  // Nếu ở chế độ nhân viên thường, tìm xem nhân viên thuộc ca nào để gán cứng ca đó
+  let staffAssignedShift = shift;
+  if (mode === 'staff' && myName) {
+    for (const s of shifts) {
+      const list = staffMap[s] || [];
+      if (list.map(n => n.toLowerCase()).includes(myName.toLowerCase())) {
+        staffAssignedShift = s;
+        break;
+      }
+    }
+  }
+
+  const activeShift = mode === 'manager' ? shift : staffAssignedShift;
+
   // PHÂN QUYỀN HIỂN THỊ VI PHẠM:
   // - Quản lý xem tất cả.
-  // - Nhân viên thường chỉ xem được vi phạm của chính mình VÀ phải thuộc đúng ca đang chọn.
+  // - Nhân viên thường chỉ xem được vi phạm của chính mình VÀ phải thuộc đúng ca của họ.
   const visibleViolations = mode === 'manager' 
     ? violations 
-    : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase() && v.shift === shift);
+    : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase() && v.shift === activeShift);
 
   // PHÂN QUYỀN HIỂN THỊ CÔNG VIỆC:
-  // - Quản lý xem tất cả theo ca đang chọn.
-  // - Nhân viên thường chỉ xem được công việc của ca đang chọn (không thấy việc của ca kia).
-  const visibleTasks = tasks.filter(t => t.shift === shift);
+  // - Quản lý xem theo ca đang chọn trên thanh menu.
+  // - Nhân viên thường chỉ xem được công việc thuộc ĐÚNG ca của họ, ngăn chặn tuyệt đối xem ca khác.
+  const visibleTasks = tasks.filter(t => t.shift === activeShift);
 
   return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', paddingBottom: 60 } },
     React.createElement('header', { style: { background: '#1B4332', color: '#fff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' } },
@@ -245,7 +272,7 @@ function App() {
         React.createElement('h1', { style: { margin: 0, fontSize: 18, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 } }, "ZEN WORK · TRẢNG BOM II"),
         mode === 'staff' && React.createElement('div', { style: { fontSize: 12, color: '#A3D9A5', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 } }, 
           React.createElement('span', { style: { width: 7, height: 7, background: '#4ADE80', borderRadius: '50%', display: 'inline-block' } }),
-          `Nhân viên: ${myName}`
+          `Nhân viên: ${myName} (Ca ${activeShift})`
         )
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8 } },
@@ -313,24 +340,28 @@ function App() {
     ),
 
     React.createElement('div', { style: { background: '#fff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E8E1' } },
-      React.createElement('div', { style: { display: 'flex', gap: 6 } },
-        shifts.map(s =>
-          React.createElement('button', {
-            key: s,
-            onClick: () => setShift(s),
-            style: {
-              padding: '6px 16px',
-              borderRadius: 20,
-              border: 'none',
-              background: shift === s ? '#1B4332' : '#F0F4F1',
-              color: shift === s ? '#fff' : '#1B4332',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer'
-            }
-          }, `Ca ${s}`)
-        )
-      ),
+      mode === 'manager' ? 
+        React.createElement('div', { style: { display: 'flex', gap: 6 } },
+          shifts.map(s =>
+            React.createElement('button', {
+              key: s,
+              onClick: () => setShift(s),
+              style: {
+                padding: '6px 16px',
+                borderRadius: 20,
+                border: 'none',
+                background: shift === s ? '#1B4332' : '#F0F4F1',
+                color: shift === s ? '#fff' : '#1B4332',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer'
+              }
+            }, `Ca ${s}`)
+          )
+        ) :
+        React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1B4332' } },
+          `Đang xem: Ca ${activeShift} (Cố định theo tài khoản)`
+        ),
       mode === 'manager' && React.createElement('button', {
         onClick: () => setFormOpen(true),
         style: { background: '#2D6A4F', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer' }
@@ -339,7 +370,7 @@ function App() {
 
     React.createElement('div', { style: { padding: 16 } },
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 } },
-        React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', margin: 0, fontWeight: 700 } }, `Danh sách việc cần làm (Ca ${shift})`),
+        React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', margin: 0, fontWeight: 700 } }, `Danh sách việc cần làm (Ca ${activeShift})`),
         mode === 'manager' && React.createElement('span', { style: { fontSize: 11, background: '#E8F5E9', color: '#2D6A4F', padding: '2px 8px', borderRadius: 4, fontWeight: 600 } }, "Chế độ Quản lý")
       ),
 
@@ -417,7 +448,7 @@ function App() {
       React.createElement('div', { style: { marginTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
         React.createElement('div', null,
           React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', margin: 0, fontWeight: 700 } }, 
-            mode === 'manager' ? "Tất cả Biên bản / Vi phạm" : `Biên bản / Vi phạm của bạn (Ca ${shift})`
+            mode === 'manager' ? "Tất cả Biên bản / Vi phạm" : `Biên bản / Vi phạm của bạn (Ca ${activeShift})`
           ),
           mode === 'staff' && React.createElement('div', { style: { fontSize: 11, color: '#666', marginTop: 1 } }, "Chỉ hiển thị lỗi của riêng bạn trong ca này để bảo mật")
         ),
@@ -760,7 +791,7 @@ function App() {
                 image: vImage,
                 confirmed: false
               };
-              persist(undefined, [newV, ...violations]);
+              persist(undefined, [newV, violations]);
               setVAssignee('');
               setVText('');
               setVPenalty('');
