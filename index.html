@@ -5,26 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZEN WORK · Trảng Bom II</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #E8F5E9; font-family: 'Plus Jakarta Sans', sans-serif; color: #1B3B2B; }
-        .container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        .container { max-width: 900px; margin: 30px auto; padding: 20px; }
         .card { background: #ffffff; border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(27,59,43,0.06); }
-        h1 { font-family: 'Oswald', sans-serif; font-size: 28px; color: #1B3B2B; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-        p { color: #557A64; margin-bottom: 24px; font-size: 15px; }
+        h1 { font-family: 'Oswald', sans-serif; font-size: 26px; color: #1B3B2B; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px; }
+        p { color: #557A64; margin-bottom: 20px; font-size: 15px; }
         .form-group { margin-bottom: 16px; }
-        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 14px; }
-        input[type="password"], input[type="text"] { width: 100%; padding: 12px 16px; border: 1px solid #C8E6C9; border-radius: 8px; font-size: 16px; outline: none; background: #F1F8E9; }
+        input[type="password"] { width: 100%; padding: 12px 16px; border: 1px solid #C8E6C9; border-radius: 8px; font-size: 18px; outline: none; background: #F1F8E9; text-align: center; letter-spacing: 8px; }
         input:focus { border-color: #2E7D32; background: #fff; }
         button { background: #2E7D32; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.2s; }
         button:hover { background: #1B5E20; }
-        .error { color: #D32F2F; font-size: 13px; margin-top: 8px; }
-        .logout-btn { background: #E0E0E0; color: #333; margin-top: 20px; }
+        .error { color: #D32F2F; font-size: 13px; margin-top: 8px; text-align: center; }
+        .logout-btn { background: #E0E0E0; color: #333; margin-top: 25px; width: auto; padding: 8px 20px; font-size: 14px; }
         .logout-btn:hover { background: #BDBDBD; }
+        .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 20px; }
+        .staff-btn { background: #F1F8E9; border: 1px solid #C8E6C9; padding: 15px; border-radius: 12px; font-weight: 600; color: #1B3B2B; cursor: pointer; text-align: left; transition: all 0.2s; }
+        .staff-btn:hover { background: #C8E6C9; border-color: #81C784; }
+        .section-title { font-size: 12px; letter-spacing: 2px; color: #2E7D32; font-weight: 700; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -33,46 +37,46 @@
     <script type="text/babel">
         function App() {
             const [pin, setPin] = React.useState("");
-            const [user, setUser] = React.useState(null);
+            const [currentUser, setCurrentUser] = React.useState(null);
             const [error, setError] = React.useState("");
 
-            // Danh sách nhân viên và mã PIN tương ứng (Bạn có thể đổi số PIN tùy ý ở đây)
-            const staffList = {
-                "1111": { name: "Nguyễn Trung Tín", shift: "Ca Sáng" },
-                "2222": { name: "Lương Hiểu Nguyên", shift: "Ca Sáng" },
-                "3333": { name: "Đoàn Mộng Chân", shift: "Ca Sáng" },
-                "4444": { name: "Đặng Sỹ Tú", shift: "Ca Sáng" },
-                "5555": { name: "Nguyễn Ngọc Bảo Trân", shift: "Ca Sáng" },
-                "6666": { name: "Nguyễn Ngọc Bảo Anh", shift: "Ca Sáng" },
-                "9999": { name: "Quản Lý (Admin)", shift: "Toàn quyền" }
+            // Danh sách mã PIN (Bạn có thể đổi số tùy ý)
+            const accounts = {
+                "1111": { name: "Nguyễn Trung Tín", shift: "Ca Sáng", role: "staff" },
+                "2222": { name: "Lương Hiểu Nguyên", shift: "Ca Sáng", role: "staff" },
+                "3333": { name: "Đoàn Mộng Chân", shift: "Ca Sáng", role: "staff" },
+                "4444": { name: "Đặng Sỹ Tú", shift: "Ca Sáng", role: "staff" },
+                "5555": { name: "Nguyễn Ngọc Bảo Trân", shift: "Ca Sáng", role: "staff" },
+                "6666": { name: "Nguyễn Ngọc Bảo Anh", shift: "Ca Sáng", role: "staff" },
+                "9999": { name: "Quản Lý (Admin)", shift: "Toàn Quyền", role: "admin" }
             };
 
             const handleLogin = (e) => {
                 e.preventDefault();
-                if (staffList[pin]) {
-                    setUser(staffList[pin]);
+                if (accounts[pin]) {
+                    setCurrentUser(accounts[pin]);
                     setError("");
                 } else {
                     setError("Mã PIN không chính xác. Vui lòng kiểm tra lại.");
                 }
             };
 
-            if (!user) {
+            // Màn hình nhập PIN
+            if (!currentUser) {
                 return (
                     <div className="container">
-                        <div className="card" style={{ maxWidth: "400px", margin: "60px auto", textAlign: "center" }}>
-                            <div style={{ fontSize: "12px", letterSpacing: "2px", color: "#2E7D32", fontWeight: "700", marginBottom: "8px" }}>ZEN WORK</div>
+                        <div className="card" style={{ maxWidth: "400px", margin: "60px auto" }}>
+                            <div className="section-title">ZEN WORK</div>
                             <h1>TRẢNG BOM II</h1>
-                            <p>Nhập mã PIN cá nhân để xem công việc của bạn.</p>
+                            <p>Nhập mã PIN cá nhân để xem công việc.</p>
                             <form onSubmit={handleLogin}>
                                 <div className="form-group">
                                     <input 
                                         type="password" 
                                         maxLength="4" 
-                                        placeholder="Nhập mã PIN 4 số..." 
+                                        placeholder="••••" 
                                         value={pin}
                                         onChange={(e) => setPin(e.target.value)}
-                                        style={{ textAlign: "center", letterSpacing: "8px", fontSize: "20px" }}
                                         autoFocus
                                     />
                                 </div>
@@ -84,32 +88,48 @@
                 );
             }
 
+            // Giao diện khi là Quản lý (Admin - Mã 9999)
+            if (currentUser.role === "admin") {
+                return (
+                    <div className="container">
+                        <div className="card">
+                            <div className="section-title">QUẢN TRỊ HỆ THỐNG</div>
+                            <h1>{currentUser.name}</h1>
+                            <p>Chọn tên nhân viên bên dưới để xem toàn bộ công việc và lỗi vi phạm của từng bạn:</p>
+                            
+                            <div className="staff-grid">
+                                {Object.values(accounts).filter(u => u.role === "staff").map((staff, idx) => (
+                                    <button key={idx} className="staff-btn" onClick={() => setCurrentUser(staff)}>
+                                        <div style={{ fontSize: "16px", marginBottom: "4px" }}>{staff.name}</div>
+                                        <div style={{ fontSize: "12px", color: "#557A64", fontWeight: "400" }}>{staff.shift}</div>
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            <button className="logout-btn" onClick={() => { setCurrentUser(null); setPin(""); }}>Đăng xuất</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Giao diện bảo mật riêng cho từng nhân viên
             return (
                 <div className="container">
                     <div className="card">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E0E0E0", paddingBottom: "16px", marginBottom: "20px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E0E0E0", paddingBottom: "15px", marginBottom: "20px" }}>
                             <div>
-                                <div style={{ fontSize: "12px", color: "#2E7D32", fontWeight: "700" }}>XIN CHÀO</div>
-                                <h1 style={{ margin: 0, fontSize: "22px" }}>{user.name}</h1>
+                                <div className="section-title">XIN CHÀO NHÂN VIÊN</div>
+                                <h1 style={{ fontSize: "22px", margin: 0 }}>{currentUser.name}</h1>
                             </div>
-                            <span style={{ background: "#C8E6C9", color: "#1B5E20", padding: "4px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>{user.shift}</span>
+                            <span style={{ background: "#C8E6C9", color: "#1B5E20", padding: "4px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>{currentUser.shift}</span>
                         </div>
 
-                        {user.name === "Quản Lý (Admin)" ? (
-                            <div>
-                                <p>Khu vực quản trị hệ thống: Xem và phân quyền toàn bộ nhân sự, công việc và lỗi vi phạm.</p>
-                                {/* Thêm nội dung trang quản lý của bạn tại đây */}
-                            </div>
-                        ) : (
-                            <div>
-                                <p>Dưới đây là danh sách công việc và lỗi vi phạm được giao riêng cho bạn:</p>
-                                <div style={{ background: "#F1F8E9", padding: "20px", borderRadius: "12px", border: "1px dashed #A5D6A7", textAlign: "center", color: "#557A64" }}>
-                                    Chưa có công việc hoặc lỗi vi phạm nào được ghi nhận.
-                                </div>
-                            </div>
-                        )}
+                        <p>Dưới đây là công việc và lỗi vi phạm được giao riêng cho bạn:</p>
+                        <div style={{ background: "#F1F8E9", padding: "25px", borderRadius: "12px", border: "1px dashed #A5D6A7", textAlign: "center", color: "#557A64", marginBottom: "20px" }}>
+                            Chưa có công việc hoặc lỗi vi phạm nào được ghi nhận cho bạn.
+                        </div>
 
-                        <button className="logout-btn" onClick={() => { setUser(null); setPin(""); }}>Đăng xuất</button>
+                        <button className="logout-btn" onClick={() => { setCurrentUser(null); setPin(""); }}>Đăng xuất</button>
                     </div>
                 </div>
             );
