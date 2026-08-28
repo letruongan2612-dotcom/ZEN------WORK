@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ZEN WORK · Trảng Bom II</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500&family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: #E8F5E9; font-family: 'Inter', sans-serif; }
+  body { margin: 0; background: #E8F5E9; font-family: 'Inter', sans-serif; color: #1B4332; }
   .rail-tab { transition: transform .15s ease, background .15s ease; }
   .rail-tab:active { transform: translateY(2px); }
   .ticket { transition: transform .15s ease, box-shadow .15s ease; }
@@ -46,7 +46,7 @@ const THEME = {
   bgCard: "#FFFFFF",
   primary: "#1B4332",
   accent: "#81C784",
-  accentSoft: "#C8E6C9",  
+  accentSoft: "#C8E6C9",
   textDark: "#1B4332",
   textMuted: "#2D6A4F",
   border: "#C8E6C9",
@@ -57,11 +57,11 @@ const THEME = {
 function App() {
   const [loaded, setLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [mode, setMode] = useState("staff");
+  const [mode, setMode] = useState("staff"); // "staff" | "manager"
   const [shifts, setShifts] = useState(DEFAULT_SHIFTS);
   const [shift, setShift] = useState("Sáng");
-  const [areas, setAreas] = useState([]);
-  const [staffMap, setStaffMap] = useState({ "Sáng": [], "Tối": [] });
+  const [areas, setAreas] = useState(["Quầy Bar", "Thu Ngân", "Pha Chế", "Vệ Sinh Chung"]);
+  const [staffMap, setStaffMap] = useState({ "Sáng": ["An", "Bình"], "Tối": ["Chi", "Dũng"] });
   const [staffPins, setStaffPins] = useState({});
   const [tasks, setTasks] = useState([]);
   const [violations, setViolations] = useState([]);
@@ -73,7 +73,7 @@ function App() {
   // Form states
   const [formOpen, setFormOpen] = useState(false);
   const [fText, setFText] = useState("");
-  const [fArea, setFArea] = useState("Chung");
+  const [fArea, setFArea] = useState("Quầy Bar");
   const [fAssignee, setFAssignee] = useState(EVERYONE);
   const [fShift, setFShift] = useState("Sáng");
   const [fTime, setFTime] = useState("");
@@ -113,11 +113,13 @@ function App() {
 
       setTasks(record.tasks || []);
       setViolations(record.violations || []);
-      setAreas(record.areas || []);
+      if (record.areas && record.areas.length) {
+        setAreas(record.areas);
+        setFArea(record.areas[0]);
+      }
       setStaffMap(record.staffMap || { "Sáng": [], "Tối": [] });
       setStaffPins(record.staffPins || {});
       setPinCode(record.pinCode || "1234");
-      if (record.areas && record.areas.length) setFArea(record.areas[0]);
       
       setLoaded(true);
     } catch (e) {
@@ -131,14 +133,24 @@ function App() {
     fetchData();
   }, []);
 
-  const persist = async (nextData) => {
-    setTasks(nextData.tasks);
-    setViolations(nextData.violations);
-    setAreas(nextData.areas);
-    setStaffMap(nextData.staffMap);
-    setStaffPins(nextData.staffPins);
-    setShifts(nextData.shifts);
-    setPinCode(nextData.pinCode);
+  const persist = async (nextTasks, nextViolations, nextAreas, nextStaffMap, nextStaffPins, nextShifts, nextPin) => {
+    const payload = {
+      tasks: nextTasks !== undefined ? nextTasks : tasks,
+      violations: nextViolations !== undefined ? nextViolations : violations,
+      areas: nextAreas !== undefined ? nextAreas : areas,
+      staffMap: nextStaffMap !== undefined ? nextStaffMap : staffMap,
+      staffPins: nextStaffPins !== undefined ? nextStaffPins : staffPins,
+      shifts: nextShifts !== undefined ? nextShifts : shifts,
+      pinCode: nextPin !== undefined ? nextPin : pinCode,
+    };
+
+    setTasks(payload.tasks);
+    setViolations(payload.violations);
+    setAreas(payload.areas);
+    setStaffMap(payload.staffMap);
+    setStaffPins(payload.staffPins);
+    setShifts(payload.shifts);
+    setPinCode(payload.pinCode);
 
     try {
       await fetch(JSONBIN_URL, {
@@ -147,7 +159,7 @@ function App() {
           "Content-Type": "application/json",
           "X-Master-Key": JSONBIN_KEY,
         },
-        body: JSON.stringify(nextData),
+        body: JSON.stringify(payload),
       });
     } catch (e) {
       console.error("Lưu dữ liệu thất bại", e);
@@ -168,22 +180,432 @@ function App() {
     );
   }
 
-  return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', padding: '16px 12px 60px' } },
-    React.createElement('div', { style: { background: '#fff', padding: 20, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' } },
-      React.createElement('h1', { style: { color: '#1B4332', fontFamily: "'Oswald', sans-serif", margin: 0 } }, "ZEN WORK · TRẢNG BOM II"),
-      React.createElement('p', { style: { color: '#2D6A4F', fontSize: 13, marginTop: 6 } }, "Hệ thống quản lý công việc và phân ca đã sẵn sàng hoạt động ổn định!"),
-      React.createElement('div', { style: { marginTop: 16 } },
-        React.createElement('button', { 
+  // Nếu chưa chọn tên nhân viên
+  if (pickingName) {
+    const currentStaffList = staffMap[shift] || [];
+    return React.createElement('div', { style: { maxWidth: 440, margin: '60px auto', padding: 24, background: '#fff', borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center' } },
+      React.createElement('h2', { style: { color: '#1B4332', fontFamily: "'Oswald', sans-serif" } }, "CHỌN TÊN NHÂN VIÊN"),
+      React.createElement('p', { style: { color: '#2D6A4F', fontSize: 14 } }, "Vui lòng chọn tên của bạn để bắt đầu làm việc ca này:"),
+      React.createElement('div', { style: { display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16 } },
+        shifts.map(s => 
+          React.createElement('button', {
+            key: s,
+            onClick: () => setShift(s),
+            style: {
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: '1px solid #1B4332',
+              background: shift === s ? '#1B4332' : '#fff',
+              color: shift === s ? '#fff' : '#1B4332',
+              cursor: 'pointer',
+              fontWeight: 600
+            }
+          }, `Ca ${s}`)
+        )
+      ),
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto', marginBottom: 16 } },
+        currentStaffList.length === 0 ? 
+          React.createElement('div', { style: { color: '#888', fontStyle: 'italic' } }, "Chưa có nhân viên trong ca này. Hãy nhập tên bên dưới:") :
+          currentStaffList.map(name =>
+            React.createElement('button', {
+              key: name,
+              onClick: () => {
+                setMyName(name);
+                localStorage.setItem("pr-my-name", name);
+                setPickingName(false);
+              },
+              style: { padding: '10px', background: '#E8F5E9', border: '1px solid #C8E6C9', borderRadius: 8, fontWeight: 600, color: '#1B4332', cursor: 'pointer' }
+            }, name)
+          )
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8 } },
+        React.createElement('input', {
+          type: 'text',
+          placeholder: 'Hoặc nhập tên khác...',
+          id: 'custom-name-input',
+          style: { flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9' }
+        }),
+        React.createElement('button', {
           onClick: () => {
-            const name = prompt("Nhập tên nhân viên của bạn:");
-            if(name) {
-              setMyName(name);
-              localStorage.setItem("pr-my-name", name);
+            const val = document.getElementById('custom-name-input').value.trim();
+            if(val) {
+              setMyName(val);
+              localStorage.setItem("pr-my-name", val);
               setPickingName(false);
             }
-          }, 
-          style: { background: '#1B4332', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
-        }, myName ? `Đang đăng nhập: ${myName} (Đổi tên)` : "Chọn tên nhân viên")
+          },
+          style: { background: '#1B4332', color: '#fff', border: 'none', padding: '0 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+        }, "Vào")
+      )
+    );
+  }
+
+  return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', paddingBottom: 80 } },
+    /* HEADER */
+    React.createElement('header', { style: { background: '#1B4332', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } },
+      React.createElement('div', null,
+        React.createElement('h1', { style: { margin: 0, fontSize: 20, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 } }, "ZEN WORK · TRẢNG BOM II"),
+        React.createElement('div', { style: { fontSize: 12, color: '#C8E6C9', marginTop: 2 } }, `Nhân viên: ${myName} `)
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8 } },
+        React.createElement('button', {
+          onClick: () => setPickingName(true),
+          style: { background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }
+        }, "Đổi tên"),
+        mode === 'staff' ?
+          React.createElement('button', {
+            onClick: () => setShowPinModal(true),
+            style: { background: '#81C784', border: 'none', color: '#1B4332', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
+          }, "Quản lý") :
+          React.createElement('button', {
+            onClick: () => setMode('staff'),
+            style: { background: '#E63946', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
+          }, "Thoát QL")
+      )
+    ),
+
+    /* SHIFT SELECTOR BAR */
+    React.createElement('div', { style: { background: '#fff', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #C8E6C9' } },
+      React.createElement('div', { style: { display: 'flex', gap: 6 } },
+        shifts.map(s =>
+          React.createElement('button', {
+            key: s,
+            onClick: () => setShift(s),
+            style: {
+              padding: '6px 16px',
+              borderRadius: 20,
+              border: 'none',
+              background: shift === s ? '#1B4332' : '#E8F5E9',
+              color: shift === s ? '#fff' : '#1B4332',
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer'
+            }
+          }, `Ca ${s}`)
+        )
+      ),
+      mode === 'manager' && React.createElement('button', {
+        onClick: () => setFormOpen(true),
+        style: { background: '#388E3C', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer' }
+      }, "+ Giao việc")
+    ),
+
+    /* MAIN CONTENT AREA */
+    React.createElement('div', { style: { padding: 16 } },
+      /* TASK LIST */
+      React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+        `Danh sách việc cần làm (Ca ${shift})`,
+        mode === 'manager' && React.createElement('span', { style: { fontSize: 12, color: '#2D6A4F', fontWeight: 400 } }, "Chế độ Quản lý")
+      ),
+
+      tasks.filter(t => t.shift === shift).length === 0 ?
+        React.createElement('div', { style: { background: '#fff', padding: 30, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9' } }, "Chưa có công việc nào trong ca này.") :
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+          tasks.filter(t => t.shift === shift).map(t => {
+            const isDone = t.status === 'done';
+            return React.createElement('div', {
+              key: t.id,
+              className: 'ticket',
+              style: {
+                background: '#fff',
+                padding: 14,
+                borderRadius: 10,
+                borderLeft: `4px solid ${isDone ? '#388E3C' : '#81C784'}`,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }
+            },
+              React.createElement('div', { style: { flex: 1 } },
+                React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 } },
+                  React.createElement('span', { style: { background: '#E8F5E9', color: '#1B4332', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, t.area),
+                  t.time && React.createElement('span', { style: { color: '#E63946', fontSize: 11, fontWeight: 600 } }, `⏰ ${t.time}`),
+                  React.createElement('span', { style: { color: '#666', fontSize: 11 } }, `Giao: ${t.assignee}`)
+                ),
+                React.createElement('div', { style: { fontSize: 14, fontWeight: 500, color: isDone ? '#666' : '#1B4332', textDecoration: isDone ? 'line-through' : 'none' } }, t.text),
+                isDone && t.doneBy && React.createElement('div', { style: { fontSize: 11, color: '#388E3C', marginTop: 2 } }, `✓ Hoàn thành bởi ${t.doneBy}`)
+              ),
+              React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+                React.createElement('button', {
+                  onClick: () => {
+                    const nextTasks = tasks.map(item => {
+                      if (item.id === t.id) {
+                        return item.status === 'done' 
+                          ? { ...item, status: 'pending', doneBy: '' }
+                          : { ...item, status: 'done', doneBy: myName };
+                      }
+                      return item;
+                    });
+                    persist(nextTasks);
+                  },
+                  style: {
+                    background: isDone ? '#E8F5E9' : '#388E3C',
+                    color: isDone ? '#388E3C' : '#fff',
+                    border: 'none',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }
+                }, isDone ? 'Đã xong ✓' : 'Làm xong'),
+                mode === 'manager' && React.createElement('button', {
+                  onClick: () => {
+                    if(confirm("Xóa công việc này?")) {
+                      persist(tasks.filter(item => item.id !== t.id));
+                    }
+                  },
+                  style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontSize: 16 }
+                }, '×')
+              )
+            );
+          })
+        ),
+
+      /* VIOLATIONS SECTION */
+      React.createElement('div', { style: { marginTop: 30, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+        React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', margin: 0 } }, "Biên bản / Vi phạm ca"),
+        mode === 'manager' && React.createElement('button', {
+          onClick: () => setViolationFormOpen(true),
+          style: { background: '#E63946', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
+        }, "+ Thêm vi phạm")
+      ),
+      violations.length === 0 ?
+        React.createElement('div', { style: { background: '#fff', padding: 20, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', marginTop: 8, border: '1px dashed #C8E6C9' } }, "Không có vi phạm nào ghi nhận.") :
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 } },
+          violations.map(v =>
+            React.createElement('div', { key: v.id, style: { background: '#FFF3F3', border: '1px solid #FFCDD2', padding: 12, borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+              React.createElement('div', null,
+                React.createElement('div', { style: { fontWeight: 600, color: '#C62828', fontSize: 13 } }, `${v.assignee} (Ca ${v.shift})`),
+                React.createElement('div', { style: { fontSize: 13, color: '#333', marginTop: 2 } }, v.text),
+                v.penalty && React.createElement('div', { style: { fontSize: 12, color: '#E53935', fontWeight: 600, marginTop: 2 } }, `Phạt: ${v.penalty}`)
+              ),
+              mode === 'manager' && React.createElement('button', {
+                onClick: () => {
+                  if(confirm("Xóa biên bản này?")) {
+                    persist(undefined, violations.filter(item => item.id !== v.id));
+                  }
+                },
+                style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontSize: 16 }
+              }, '×')
+            )
+          )
+        )
+    ),
+
+    /* PIN MODAL */
+    showPinModal && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center' } },
+        React.createElement('h3', { style: { color: '#1B4332', marginTop: 0 } }, "Nhập mã PIN Quản lý"),
+        React.createElement('input', {
+          type: 'password',
+          placeholder: 'Mã PIN...',
+          value: inputPin,
+          onChange: e => setInputPin(e.target.value),
+          style: { width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9', textAlign: 'center', fontSize: 18, letterSpacing: 4, marginBottom: 10 }
+        }),
+        pinError && React.createElement('div', { style: { color: '#E63946', fontSize: 12, marginBottom: 10 } }, pinError),
+        React.createElement('div', { style: { display: 'flex', gap: 8 } },
+          React.createElement('button', {
+            onClick: () => { setShowPinModal(false); setInputPin(''); setPinError(''); },
+            style: { flex: 1, background: '#E8F5E9', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Hủy"),
+          React.createElement('button', {
+            onClick: () => {
+              if (inputPin === pinCode) {
+                setMode('manager');
+                setShowPinModal(false);
+                setInputPin('');
+                setPinError('');
+              } else {
+                setPinError('Mã PIN không đúng!');
+              }
+            },
+            style: { flex: 1, background: '#1B4332', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Xác nhận")
+        ),
+        React.createElement('div', { style: { marginTop: 15 } },
+          React.createElement('button', {
+            onClick: () => setShowChangePin(!showChangePin),
+            style: { background: 'none', border: 'none', color: '#2D6A4F', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }
+          }, showChangePin ? "Ẩn đổi PIN" : "Đổi mã PIN quản lý")
+        ),
+        showChangePin && React.createElement('div', { style: { marginTop: 10, display: 'flex', gap: 6 } },
+          React.createElement('input', {
+            type: 'text',
+            placeholder: 'PIN mới',
+            value: newPinInput,
+            onChange: e => setNewPinInput(e.target.value),
+            style: { flex: 1, padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+          }),
+          React.createElement('button', {
+            onClick: () => {
+              if(newPinInput.length >= 4) {
+                persist(undefined, undefined, undefined, undefined, undefined, undefined, newPinInput);
+                alert("Đã đổi mã PIN thành công!");
+                setNewPinInput('');
+                setShowChangePin(false);
+              } else {
+                alert("Mã PIN phải có ít nhất 4 ký tự!");
+              }
+            },
+            style: { background: '#388E3C', color: '#fff', border: 'none', padding: '0 12px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }
+          }, "Lưu")
+        )
+      )
+    ),
+
+    /* ADD TASK MODAL */
+    formOpen && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' } },
+        React.createElement('h3', { style: { color: '#1B4332', marginTop: 0 } }, "Giao công việc mới"),
+        React.createElement('div', { style: { marginBottom: 12 } },
+          React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Nội dung công việc"),
+          React.createElement('textarea', {
+            placeholder: 'Nhập nội dung công việc...',
+            value: fText,
+            onChange: e => setFText(e.target.value),
+            style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9', height: 70 }
+          })
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 12 } },
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Khu vực"),
+            React.createElement('select', {
+              value: fArea,
+              onChange: e => setFArea(e.target.value),
+              style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+            }, areas.map(a => React.createElement('option', { key: a, value: a }, a)))
+          ),
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Ca làm"),
+            React.createElement('select', {
+              value: fShift,
+              onChange: e => setFShift(e.target.value),
+              style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+            }, shifts.map(s => React.createElement('option', { key: s, value: s }, `Ca ${s}`)))
+          )
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 16 } },
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Phân công"),
+            React.createElement('select', {
+              value: fAssignee,
+              onChange: e => setFAssignee(e.target.value),
+              style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+            }, 
+              React.createElement('option', { value: EVERYONE }, EVERYONE),
+              (staffMap[fShift] || []).map(st => React.createElement('option', { key: st, value: st }, st))
+            )
+          ),
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Giờ hoàn thành (tuỳ chọn)"),
+            React.createElement('input', {
+              type: 'text',
+              placeholder: 'Ví dụ: 10:00',
+              value: fTime,
+              onChange: e => setFTime(e.target.value),
+              style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+            })
+          )
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8 } },
+          React.createElement('button', {
+            onClick: () => setFormOpen(false),
+            style: { flex: 1, background: '#E8F5E9', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Hủy"),
+          React.createElement('button', {
+            onClick: () => {
+              if(!fText.trim()) { alert("Vui lòng nhập nội dung công việc!"); return; }
+              const newTaskItem = {
+                id: uid(),
+                text: fText,
+                area: fArea,
+                shift: fShift,
+                assignee: fAssignee,
+                time: fTime,
+                status: 'pending',
+                doneBy: ''
+              };
+              persist([newTaskItem, ...tasks]);
+              setFText('');
+              setFTime('');
+              setFormOpen(false);
+            },
+            style: { flex: 1, background: '#1B4332', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Giao việc")
+        )
+      )
+    ),
+
+    /* ADD VIOLATION MODAL */
+    violationFormOpen && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' } },
+        React.createElement('h3', { style: { color: '#C62828', marginTop: 0 } }, "Thêm biên bản / Vi phạm"),
+        React.createElement('div', { style: { marginBottom: 12 } },
+          React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Nhân viên vi phạm"),
+          React.createElement('input', {
+            type: 'text',
+            placeholder: 'Tên nhân viên...',
+            value: vAssignee,
+            onChange: e => setVAssignee(e.target.value),
+            style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+          })
+        ),
+        React.createElement('div', { style: { marginBottom: 12 } },
+          React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Nội dung vi phạm"),
+          React.createElement('textarea', {
+            placeholder: 'Chi tiết vi phạm...',
+            value: vText,
+            onChange: e => setVText(e.target.value),
+            style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9', height: 60 }
+          })
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 16 } },
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Hình thức phạt"),
+            React.createElement('input', {
+              type: 'text',
+              placeholder: 'Ví dụ: Phạt 50k',
+              value: vPenalty,
+              onChange: e => setVPenalty(e.target.value),
+              style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+            })
+          ),
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 } }, "Ca"),
+            React.createElement('select', {
+              value: vShift,
+              onChange: e => setVShift(e.target.value),
+              style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9' }
+            }, shifts.map(s => React.createElement('option', { key: s, value: s }, `Ca ${s}`)))
+          )
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8 } },
+          React.createElement('button', {
+            onClick: () => setViolationFormOpen(false),
+            style: { flex: 1, background: '#E8F5E9', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Hủy"),
+          React.createElement('button', {
+            onClick: () => {
+              if(!vAssignee.trim() || !vText.trim()) { alert("Vui lòng điền đủ tên và nội dung!"); return; }
+              const newV = {
+                id: uid(),
+                assignee: vAssignee,
+                text: vText,
+                penalty: vPenalty,
+                shift: vShift
+              };
+              persist(undefined, [newV, ...violations]);
+              setVAssignee('');
+              setVText('');
+              setVPenalty('');
+              setViolationFormOpen(false);
+            },
+            style: { flex: 1, background: '#C62828', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Lưu vi phạm")
+        )
       )
     )
   );
