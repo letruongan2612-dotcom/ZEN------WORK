@@ -217,13 +217,13 @@ function App() {
     : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase());
 
   return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', paddingBottom: 60 } },
-    /* HEADER TỐI ƯU */
+    /* HEADER TỐI ƯU (Luôn hiển thị tên nhân viên ngay cả trong chế độ quản lý) */
     React.createElement('header', { style: { background: '#1B4332', color: '#fff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' } },
       React.createElement('div', null,
         React.createElement('h1', { style: { margin: 0, fontSize: 18, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 } }, "ZEN WORK · TRẢNG BOM II"),
         React.createElement('div', { style: { fontSize: 12, color: '#A3D9A5', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 } }, 
           React.createElement('span', { style: { width: 7, height: 7, background: '#4ADE80', borderRadius: '50%', display: 'inline-block' } }),
-          `Nhân viên: ${myName}`
+          `Nhân viên: ${myName} ${mode === 'manager' ? ' (Đang Quản lý)' : ''}`
         )
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8 } },
@@ -435,12 +435,18 @@ function App() {
         )
     ),
 
-    /* MODAL XEM CHI TIẾT BIÊN BẢN */
+    /* MODAL XEM CHI TIẾT BIÊN BẢN (Đã bổ sung hiển thị trạng thái Đã xác nhận) */
     selectedViolation && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 } },
       React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: '90%', maxWidth: 400, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' } },
         React.createElement('h3', { style: { color: '#C62828', marginTop: 0, marginBottom: 12 } }, "Chi tiết Biên bản Vi phạm"),
         React.createElement('div', { style: { marginBottom: 10, fontSize: 13 } },
           React.createElement('strong', null, "Nhân viên: "), selectedViolation.assignee, " (Ca ", selectedViolation.shift, ")"
+        ),
+        React.createElement('div', { style: { marginBottom: 10, fontSize: 13 } },
+          React.createElement('strong', null, "Trạng thái: "), 
+          selectedViolation.confirmed ? 
+            React.createElement('span', { style: { color: '#166534', background: '#DCFCE7', padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 12 } }, "Đã xác nhận") : 
+            React.createElement('span', { style: { color: '#C2410C', background: '#FFEDD5', padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 12 } }, "Chưa xác nhận")
         ),
         React.createElement('div', { style: { marginBottom: 10, fontSize: 13 } },
           React.createElement('strong', null, "Hình thức xử lí: "), 
