@@ -40,7 +40,6 @@ function App() {
   const [shift, setShift] = useState("Sáng");
   const [areas, setAreas] = useState(["Quầy Bar", "Thu Ngân", "Pha Chế", "Vệ Sinh Chung"]);
   
-  // Khai báo thiếu state tasks và violations trước đó
   const [tasks, setTasks] = useState([]);
   const [violations, setViolations] = useState([]);
 
@@ -50,8 +49,8 @@ function App() {
   const [myName, setMyName] = useState(localStorage.getItem("pr-my-name") || "");
   const [pickingName, setPickingName] = useState(!localStorage.getItem("pr-my-name"));
 
-  // State ẩn/hiện danh sách nhân sự trong chế độ quản lý
-  const [showStaffManager, setShowStaffManager] = useState(false);
+  // State ẩn/hiện danh sách nhân sự trong chế độ quản lý (mặc định mở luôn hoặc bấm tiêu đề để thu gọn)
+  const [showStaffManager, setShowStaffManager] = useState(true);
 
   // Form states
   const [formOpen, setFormOpen] = useState(false);
@@ -295,7 +294,7 @@ function App() {
         onClick: () => setShowStaffManager(!showStaffManager),
         style: { fontSize: 13, fontWeight: 700, color: '#1B4332', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }
       }, 
-        React.createElement('span', null, "👥 Quản lý nhân sự Ca ", shift, " ", React.createElement('span', { style: { fontSize: 11, fontWeight: 400, color: '#4F772D', fontStyle: 'italic' } }, `(Bấm vào đây để ${showStaffManager ? 'thu gọn' : 'mở rộng'})`)),
+        React.createElement('span', null, "👥 Quản lý nhân sự Ca ", shift),
         React.createElement('span', null, showStaffManager ? '▲' : '▼')
       ),
       showStaffManager && React.createElement('div', { style: { marginTop: 8 } },
