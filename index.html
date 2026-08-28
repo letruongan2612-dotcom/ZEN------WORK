@@ -61,7 +61,7 @@ async function loadBoard() {
   const res = await fetch(`${JSONBIN_URL}/latest`, {
     headers: { "X-Master-Key": JSONBIN_KEY },
   });
-  if (!res.ok) throw new Error("Không tải được dữ liệu");
+  if (!res.ok) throw new Error("Không tải được dữ liệu từ JSONBin");
   const data = await res.json();
   return data.record;
 }
@@ -94,7 +94,7 @@ function App() {
   const [pinCode, setPinCode] = useState("1234");
   
   const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [stampId, setStampId] = useState(null);
   const [violationStampId, setViolationStampId] = useState(null);
 
@@ -151,43 +151,48 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const record = await loadBoard();
-        const loadedShifts = record.shifts && record.shifts.length > 0 ? record.shifts : DEFAULT_SHIFTS;
-        
-        let initialStaffMap = {};
-        if (record.staffMap) {
-          initialStaffMap = record.staffMap;
-        } else if (Array.isArray(record.staff)) {
-          initialStaffMap[loadedShifts[0]] = record.staff;
-        }
-
-        loadedShifts.forEach(s => {
-          if (!initialStaffMap[s]) initialStaffMap[s] = [];
-        });
-
-        const firstStaffOfShift = initialStaffMap[loadedShifts[0]]?.[0] || "";
-
-        setTasks(record.tasks || []);
-        setViolations(record.violations || []);
-        setAreas(record.areas || []);
-        setStaffMap(initialStaffMap);
-        setStaffPins(record.staffPins || {});
-        setShifts(loadedShifts);
-        setShift(loadedShifts[0]);
-        setFShift(loadedShifts[0]);
-        setVShift(loadedShifts[0]);
-        setVAssignee(firstStaffOfShift);
-        setPinCode(record.pinCode || "1234");
-        if (record.areas && record.areas.length) setFArea(record.areas[0]);
-      } catch (e) {
-        console.error(e);
-        setLoadError(true);
+  const fetchData = async () => {
+    setLoadError(null);
+    setLoaded(false);
+    try {
+      const record = await loadBoard();
+      const loadedShifts = record.shifts && record.shifts.length > 0 ? record.shifts : DEFAULT_SHIFTS;
+      
+      let initialStaffMap = {};
+      if (record.staffMap) {
+        initialStaffMap = record.staffMap;
+      } else if (Array.isArray(record.staff)) {
+        initialStaffMap[loadedShifts[0]] = record.staff;
       }
+
+      loadedShifts.forEach(s => {
+        if (!initialStaffMap[s]) initialStaffMap[s] = [];
+      });
+
+      const firstStaffOfShift = initialStaffMap[loadedShifts[0]]?.[0] || "";
+
+      setTasks(record.tasks || []);
+      setViolations(record.violations || []);
+      setAreas(record.areas || []);
+      setStaffMap(initialStaffMap);
+      setStaffPins(record.staffPins || {});
+      setShifts(loadedShifts);
+      setShift(loadedShifts[0]);
+      setFShift(loadedShifts[0]);
+      setVShift(loadedShifts[0]);
+      setVAssignee(firstStaffOfShift);
+      setPinCode(record.pinCode || "1234");
+      if (record.areas && record.areas.length) setFArea(record.areas[0]);
       setLoaded(true);
-    })();
+    } catch (e) {
+      console.error(e);
+      setLoadError(e.message);
+      setLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   const requestManagerMode = () => {
@@ -406,10 +411,22 @@ function App() {
   const formShiftStaff = staffMap[fShift] || [];
   const violationFormShiftStaff = staffMap[vShift] || [];
 
+  if (!loaded) {
+    return (
+      <div style={{...styles.page, display: "flex", alignItems: "center", justifyContent: "center"}}>
+        <div style={{ textAlign: "center", color: THEME.primary, fontWeight: 600, fontSize: 16 }}>Đang tải dữ liệu hệ thống...</div>
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
-      <div style={styles.page}>
-        <div style={styles.emptyState}>Chưa kết nối được kho dữ liệu. Vui lòng kiểm tra lại kết nối mạng hoặc server.</div>
+      <div style={{...styles.page, display: "flex", alignItems: "center", justifyContent: "center"}}>
+        <div style={{ background: "#fff", padding: 24, borderRadius: 12, textAlign: "center", maxWidth: 400, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+          <div style={{ color: THEME.danger, fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Lỗi kết nối dữ liệu</div>
+          <div style={{ color: THEME.textMuted, fontSize: 13, marginBottom: 16 }}>{loadError}</div>
+          <button onClick={fetchData} style={styles.confirmBtn}>Thử lại ngay</button>
+        </div>
       </div>
     );
   }
