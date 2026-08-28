@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: #E8F5E9; }
+  body { margin: 0; background: #E8F5E9; font-family: 'Inter', sans-serif; }
   .rail-tab { transition: transform .15s ease, background .15s ease; }
   .rail-tab:active { transform: translateY(2px); }
   .ticket { transition: transform .15s ease, box-shadow .15s ease; }
@@ -24,7 +24,6 @@
   }
   .stamp { animation: stampIn .5s cubic-bezier(.2,.9,.3,1.2); }
   input:focus, textarea:focus, select:focus { outline: 2px solid #2D6A4F; outline-offset: 1px; }
-  button:focus-visible { outline: 2px solid #2D6A4F; outline-offset: 2px; }
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #C8E6C9; border-radius: 4px; }
 </style>
@@ -32,7 +31,7 @@
 <body>
 <div id="root"></div>
 
-<script type="text/babel" data-presets="react">
+<script type="text/babel">
 const { useState, useEffect, useCallback } = React;
 
 const JSONBIN_ID = "6a8fe5e0da38895dfe16d014";
@@ -50,143 +49,80 @@ const THEME = {
   accentSoft: "#C8E6C9",  
   textDark: "#1B4332",
   textMuted: "#2D6A4F",
-  textLight: "#4CAF50",
   border: "#C8E6C9",
-  ticketBg: "#FFFFFF",
   success: "#388E3C",
   danger: "#E63946"
 };
 
-async function loadBoard() {
-  const res = await fetch(`${JSONBIN_URL}/latest`, {
-    headers: { "X-Master-Key": JSONBIN_KEY },
-  });
-  if (!res.ok) throw new Error("Không tải được dữ liệu từ JSONBin");
-  const data = await res.json();
-  return data.record;
-}
-
-async function saveBoard(record) {
-  const res = await fetch(JSONBIN_URL, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Master-Key": JSONBIN_KEY,
-    },
-    body: JSON.stringify(record),
-  });
-  if (!res.ok) throw new Error("Không lưu được dữ liệu");
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
-
 function App() {
+  const [loaded, setLoaded] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [mode, setMode] = useState("staff");
   const [shifts, setShifts] = useState(DEFAULT_SHIFTS);
-  const [shift, setShift] = useState(DEFAULT_SHIFTS[0]);
+  const [shift, setShift] = useState("Sáng");
   const [areas, setAreas] = useState([]);
-  const [staffMap, setStaffMap] = useState({});
+  const [staffMap, setStaffMap] = useState({ "Sáng": [], "Tối": [] });
   const [staffPins, setStaffPins] = useState({});
   const [tasks, setTasks] = useState([]);
   const [violations, setViolations] = useState([]);
   const [pinCode, setPinCode] = useState("1234");
-  
-  const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(null);
-  const [stampId, setStampId] = useState(null);
-  const [violationStampId, setViolationStampId] = useState(null);
 
   const [myName, setMyName] = useState(localStorage.getItem("pr-my-name") || "");
   const [pickingName, setPickingName] = useState(!localStorage.getItem("pr-my-name"));
 
-  const [pendingStaff, setPendingStaff] = useState(null);
-  const [showStaffPinModal, setShowStaffPinModal] = useState(false);
-  const [staffInputPin, setStaffInputPin] = useState("");
-  const [staffPinError, setStaffPinError] = useState("");
-  const [staffSettingModal, setStaffSettingModal] = useState(false);
-  const [targetStaffForPin, setTargetStaffForPin] = useState("");
-  const [newStaffPinInput, setNewStaffPinInput] = useState("");
-
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [inputPin, setInputPin] = useState("");
-  const [pinError, setPinError] = useState("");
-  const [showChangePin, setShowChangePin] = useState(false);
-  const [newPinInput, setNewPinInput] = useState("");
-
+  // Form states
   const [formOpen, setFormOpen] = useState(false);
   const [fText, setFText] = useState("");
-  const [fArea, setFArea] = useState("");
+  const [fArea, setFArea] = useState("Chung");
   const [fAssignee, setFAssignee] = useState(EVERYONE);
-  const [fShift, setFShift] = useState(DEFAULT_SHIFTS[0]);
+  const [fShift, setFShift] = useState("Sáng");
   const [fTime, setFTime] = useState("");
 
   const [violationFormOpen, setViolationFormOpen] = useState(false);
   const [vText, setVText] = useState("");
   const [vPenalty, setVPenalty] = useState("");
   const [vAssignee, setVAssignee] = useState("");
-  const [vShift, setVShift] = useState(DEFAULT_SHIFTS[0]);
+  const [vShift, setVShift] = useState("Sáng");
   const [vImage, setVImage] = useState("");
 
-  const [detailModalViolation, setDetailModalViolation] = useState(null);
-  const [previewImageModal, setPreviewImageModal] = useState(null);
-  
+  // Modals & UI states
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [inputPin, setInputPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [showChangePin, setShowChangePin] = useState(false);
+  const [newPinInput, setNewPinInput] = useState("");
+
   const [newAreaInput, setNewAreaInput] = useState("");
   const [newStaffInput, setNewStaffInput] = useState("");
   const [newShiftInput, setNewShiftInput] = useState("");
 
-  const persist = useCallback(async (next) => {
-    setTasks(next.tasks);
-    setViolations(next.violations || []);
-    setAreas(next.areas);
-    setStaffMap(next.staffMap);
-    setStaffPins(next.staffPins || {});
-    setShifts(next.shifts);
-    setPinCode(next.pinCode || "1234");
-    try {
-      await saveBoard(next);
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
   const fetchData = async () => {
-    setLoadError(null);
-    setLoaded(false);
     try {
-      const record = await loadBoard();
-      const loadedShifts = record.shifts && record.shifts.length > 0 ? record.shifts : DEFAULT_SHIFTS;
-      
-      let initialStaffMap = {};
-      if (record.staffMap) {
-        initialStaffMap = record.staffMap;
-      } else if (Array.isArray(record.staff)) {
-        initialStaffMap[loadedShifts[0]] = record.staff;
-      }
-
-      loadedShifts.forEach(s => {
-        if (!initialStaffMap[s]) initialStaffMap[s] = [];
+      const res = await fetch(`${JSONBIN_URL}/latest`, {
+        headers: { "X-Master-Key": JSONBIN_KEY },
       });
-
-      const firstStaffOfShift = initialStaffMap[loadedShifts[0]]?.[0] || "";
-
-      setTasks(record.tasks || []);
-      setViolations(record.violations || []);
-      setAreas(record.areas || []);
-      setStaffMap(initialStaffMap);
-      setStaffPins(record.staffPins || {});
+      if (!res.ok) throw new Error("Lỗi kết nối JSONBin");
+      const data = await res.json();
+      const record = data.record || {};
+      
+      const loadedShifts = record.shifts && record.shifts.length ? record.shifts : DEFAULT_SHIFTS;
       setShifts(loadedShifts);
       setShift(loadedShifts[0]);
       setFShift(loadedShifts[0]);
       setVShift(loadedShifts[0]);
-      setVAssignee(firstStaffOfShift);
+
+      setTasks(record.tasks || []);
+      setViolations(record.violations || []);
+      setAreas(record.areas || []);
+      setStaffMap(record.staffMap || { "Sáng": [], "Tối": [] });
+      setStaffPins(record.staffPins || {});
       setPinCode(record.pinCode || "1234");
       if (record.areas && record.areas.length) setFArea(record.areas[0]);
+      
       setLoaded(true);
     } catch (e) {
       console.error(e);
-      setLoadError(e.message);
+      setErrorMsg(e.message);
       setLoaded(true);
     }
   };
@@ -195,804 +131,65 @@ function App() {
     fetchData();
   }, []);
 
-  const requestManagerMode = () => {
-    setInputPin("");
-    setPinError("");
-    setShowPinModal(true);
-  };
+  const persist = async (nextData) => {
+    setTasks(nextData.tasks);
+    setViolations(nextData.violations);
+    setAreas(nextData.areas);
+    setStaffMap(nextData.staffMap);
+    setStaffPins(nextData.staffPins);
+    setShifts(nextData.shifts);
+    setPinCode(nextData.pinCode);
 
-  const handleVerifyPin = () => {
-    if (inputPin === pinCode) {
-      setMode("manager");
-      setShowPinModal(false);
-      setInputPin("");
-      setPinError("");
-    } else {
-      setPinError("Mật khẩu không đúng!");
+    try {
+      await fetch(JSONBIN_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": JSONBIN_KEY,
+        },
+        body: JSON.stringify(nextData),
+      });
+    } catch (e) {
+      console.error("Lưu dữ liệu thất bại", e);
     }
   };
 
-  const handleChangePin = () => {
-    if (!newPinInput.trim()) return;
-    const nextPin = newPinInput.trim();
-    persist({ tasks, violations, areas, staffMap, staffPins, shifts, pinCode: nextPin });
-    setNewPinInput("");
-    setShowChangePin(false);
-    alert("Đã đổi mật khẩu quản lý thành công!");
-  };
-
-  const handleSelectStaffName = (name) => {
-    const currentPin = staffPins[name];
-    if (currentPin) {
-      setPendingStaff(name);
-      setStaffInputPin("");
-      setStaffPinError("");
-      setShowStaffPinModal(true);
-    } else {
-      chooseMyName(name);
-    }
-  };
-
-  const handleVerifyStaffPin = () => {
-    if (staffInputPin === staffPins[pendingStaff]) {
-      chooseMyName(pendingStaff);
-      setShowStaffPinModal(false);
-      setPendingStaff(null);
-      setStaffInputPin("");
-      setStaffPinError("");
-    } else {
-      setStaffPinError("Mật khẩu cá nhân không đúng!");
-    }
-  };
-
-  const handleSaveStaffPin = () => {
-    if (!targetStaffForPin) return;
-    const nextPins = { ...staffPins, [targetStaffForPin]: newStaffPinInput.trim() };
-    persist({ tasks, violations, areas, staffMap, staffPins: nextPins, shifts, pinCode });
-    setNewStaffPinInput("");
-    setStaffSettingModal(false);
-    alert(`Đã cập nhật mật khẩu cho nhân viên: ${targetStaffForPin}`);
-  };
-
-  const chooseMyName = (name) => {
-    setMyName(name);
-    setPickingName(false);
-    localStorage.setItem("pr-my-name", name);
-  };
-
-  const toggleDone = (id) => {
-    const nextTasks = tasks.map((t) =>
-      t.id === id
-        ? { ...t, done: !t.done, doneAt: !t.done ? Date.now() : null, doneBy: !t.done ? myName || "Nhân viên" : null }
-        : t
-    );
-    if (nextTasks.find((t) => t.id === id).done) {
-      setStampId(id);
-      setTimeout(() => setStampId(null), 900);
-    }
-    persist({ tasks: nextTasks, violations, areas, staffMap, staffPins, shifts, pinCode });
-  };
-
-  const deleteTask = (id) => {
-    persist({ tasks: tasks.filter((t) => t.id !== id), violations, areas, staffMap, staffPins, shifts, pinCode });
-  };
-
-  const addTask = () => {
-    if (!fText.trim()) {
-      alert("Vui lòng nhập nội dung công việc!");
-      return;
-    }
-    const t = {
-      id: uid(), shift: fShift, area: fArea || (areas[0] ? areas[0] : "Chung"), assignee: fAssignee,
-      text: fText.trim(), time: fTime, done: false, doneAt: null, doneBy: null,
-      createdAt: Date.now(),
-    };
-    persist({ tasks: [...tasks, t], violations, areas, staffMap, staffPins, shifts, pinCode });
-    setFText(""); setFTime(""); setFormOpen(false);
-    alert("Đã giao việc thành công!");
-  };
-
-  const toggleViolationConfirm = (id) => {
-    const nextViolations = violations.map((v) =>
-      v.id === id
-        ? { ...v, confirmed: !v.confirmed, confirmedAt: !v.confirmed ? Date.now() : null, confirmedBy: !v.confirmed ? myName || "Nhân viên" : null }
-        : v
-    );
-    if (nextViolations.find((v) => v.id === id).confirmed) {
-      setViolationStampId(id);
-      setTimeout(() => setViolationStampId(null), 900);
-    }
-    persist({ tasks, violations: nextViolations, areas, staffMap, staffPins, shifts, pinCode });
-  };
-
-  const deleteViolation = (id) => {
-    persist({ tasks, violations: violations.filter((v) => v.id !== id), areas, staffMap, staffPins, shifts, pinCode });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setVImage(event.target.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const addViolation = () => {
-    if (!vText.trim()) {
-      alert("Vui lòng nhập nội dung lỗi vi phạm!");
-      return;
-    }
-    if (!vAssignee) {
-      alert("Vui lòng chọn nhân viên vi phạm!");
-      return;
-    }
-    const v = {
-      id: uid(), shift: vShift, assignee: vAssignee,
-      text: vText.trim(), penalty: vPenalty.trim(), image: vImage || null,
-      confirmed: false, confirmedAt: null, confirmedBy: null,
-      createdAt: Date.now(),
-    };
-    persist({ tasks, violations: [...violations, v], areas, staffMap, staffPins, shifts, pinCode });
-    setVText(""); setVPenalty(""); setVImage(""); setViolationFormOpen(false);
-    alert("Đã gửi ghi nhận lỗi vi phạm cho nhân viên!");
-  };
-
-  const addArea = () => {
-    const name = newAreaInput.trim();
-    if (!name || areas.includes(name)) return;
-    persist({ tasks, violations, areas: [...areas, name], staffMap, staffPins, shifts, pinCode });
-    setNewAreaInput("");
-  };
-
-  const addStaff = () => {
-    const name = newStaffInput.trim();
-    const currentShiftStaff = staffMap[shift] || [];
-    if (!name || currentShiftStaff.includes(name)) return;
-    const nextMap = { ...staffMap, [shift]: [...currentShiftStaff, name] };
-    persist({ tasks, violations, areas, staffMap: nextMap, staffPins, shifts, pinCode });
-    setNewStaffInput("");
-  };
-
-  const removeStaff = (name) => {
-    const currentShiftStaff = staffMap[shift] || [];
-    const nextMap = { ...staffMap, [shift]: currentShiftStaff.filter((s) => s !== name) };
-    const nextPins = { ...staffPins };
-    delete nextPins[name];
-    persist({ tasks, violations, areas, staffMap: nextMap, staffPins: nextPins, shifts, pinCode });
-  };
-
-  const addShift = () => {
-    const name = newShiftInput.trim();
-    if (!name || shifts.includes(name)) return;
-    const nextShifts = [...shifts, name];
-    const nextMap = { ...staffMap, [name]: [] };
-    persist({ tasks, violations, areas, staffMap: nextMap, staffPins, shifts: nextShifts, pinCode: pinCode });
-    setNewShiftInput("");
-  };
-
-  const removeShift = (name) => {
-    if (shifts.length <= 1) return;
-    const nextShifts = shifts.filter((s) => s !== name);
-    const nextMap = { ...staffMap };
-    delete nextMap[name];
-    persist({ tasks, violations, areas, staffMap: nextMap, staffPins, shifts: nextShifts, pinCode: pinCode });
-    if (shift === name) setShift(nextShifts[0]);
-  };
-
-  const visibleTasks = tasks
-    .filter((t) => t.shift === shift)
-    .filter((t) => mode === "manager" ? true : (t.assignee === EVERYONE || t.assignee === myName))
-    .sort((a, b) => a.createdAt - b.createdAt);
-
-  const visibleViolations = violations
-    .filter((v) => v.shift === shift)
-    .filter((v) => mode === "manager" ? true : (v.assignee === myName))
-    .sort((a, b) => a.createdAt - b.createdAt);
-
-  const shiftTasksAll = mode === "manager"
-    ? tasks.filter((t) => t.shift === shift)
-    : tasks.filter((t) => t.shift === shift && (t.assignee === EVERYONE || t.assignee === myName));
-  const doneCount = shiftTasksAll.filter((t) => t.done).length;
-  const totalCount = shiftTasksAll.length;
-
-  const shiftViolationsAll = mode === "manager"
-    ? violations.filter((v) => v.shift === shift)
-    : violations.filter((v) => v.shift === shift && v.assignee === myName);
-  const confirmedViolationCount = shiftViolationsAll.filter((v) => v.confirmed).length;
-  const totalViolationCount = shiftViolationsAll.length;
-
-  const currentShiftStaff = staffMap[shift] || [];
-  const formShiftStaff = staffMap[fShift] || [];
-  const violationFormShiftStaff = staffMap[vShift] || [];
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
   if (!loaded) {
-    return (
-      <div style={{...styles.page, display: "flex", alignItems: "center", justifyContent: "center"}}>
-        <div style={{ textAlign: "center", color: THEME.primary, fontWeight: 600, fontSize: 16 }}>Đang tải dữ liệu hệ thống...</div>
-      </div>
+    return React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#1B4332', fontWeight: 600 } }, "Đang khởi tạo hệ thống ZEN WORK...");
+  }
+
+  if (errorMsg) {
+    return React.createElement('div', { style: { padding: 40, textAlign: 'center', color: '#E63946' } }, 
+      React.createElement('h3', null, "Không thể tải dữ liệu"),
+      React.createElement('p', null, errorMsg),
+      React.createElement('button', { onClick: fetchData, style: { background: '#1B4332', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', marginTop: 10 } }, "Thử lại")
     );
   }
 
-  if (loadError) {
-    return (
-      <div style={{...styles.page, display: "flex", alignItems: "center", justifyContent: "center"}}>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 12, textAlign: "center", maxWidth: 400, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-          <div style={{ color: THEME.danger, fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Lỗi kết nối dữ liệu</div>
-          <div style={{ color: THEME.textMuted, fontSize: 13, marginBottom: 16 }}>{loadError}</div>
-          <button onClick={fetchData} style={styles.confirmBtn}>Thử lại ngay</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.page}>
-      {showPinModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3 style={{ margin: "0 0 10px", color: THEME.primary }}>XÁC NHẬN QUẢN LÝ</h3>
-            <p style={{ fontSize: 13, color: THEME.textMuted, margin: "0 0 14px" }}>
-              Nhập mã PIN để truy cập phần Quản lý
-            </p>
-            <input
-              type="password"
-              value={inputPin}
-              onChange={(e) => setInputPin(e.target.value)}
-              placeholder="Nhập mã PIN..."
-              style={styles.inputModal}
-              onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
-              autoFocus
-            />
-            {pinError && <div style={styles.errorText}>{pinError}</div>}
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => setShowPinModal(false)}>Hủy</button>
-              <button style={styles.confirmBtn} onClick={handleVerifyPin}>Xác nhận</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showStaffPinModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3 style={{ margin: "0 0 10px", color: THEME.primary }}>MẬT KHẨU CÁ NHÂN</h3>
-            <p style={{ fontSize: 13, color: THEME.textMuted, margin: "0 0 14px" }}>
-              Nhập mã PIN truy cập cá nhân của <b>{pendingStaff}</b>
-            </p>
-            <input
-              type="password"
-              value={staffInputPin}
-              onChange={(e) => setStaffInputPin(e.target.value)}
-              placeholder="Mã PIN cá nhân..."
-              style={styles.inputModal}
-              onKeyDown={(e) => e.key === "Enter" && handleVerifyStaffPin()}
-              autoFocus
-            />
-            {staffPinError && <div style={styles.errorText}>{staffPinError}</div>}
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => { setShowStaffPinModal(false); setPendingStaff(null); }}>Hủy</button>
-              <button style={styles.confirmBtn} onClick={handleVerifyStaffPin}>Truy cập</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {staffSettingModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3 style={{ margin: "0 0 10px", color: THEME.primary }}>ĐẶT MẬT KHẨU NHÂN VIÊN</h3>
-            <p style={{ fontSize: 13, color: THEME.textMuted, margin: "0 0 14px" }}>
-              Thiết lập hoặc đổi mã PIN cho nhân viên: <b>{targetStaffForPin}</b>
-            </p>
-            <input
-              type="password"
-              value={newStaffPinInput}
-              onChange={(e) => setNewStaffPinInput(e.target.value)}
-              placeholder="Nhập mật khẩu mới (để trống nếu muốn xóa)..."
-              style={styles.inputModal}
-              onKeyDown={(e) => e.key === "Enter" && handleSaveStaffPin()}
-              autoFocus
-            />
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => setStaffSettingModal(false)}>Hủy</button>
-              <button style={styles.confirmBtn} onClick={handleSaveStaffPin}>Lưu mật khẩu</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {detailModalViolation && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3 style={{ margin: "0 0 8px", color: THEME.danger, fontSize: 15, fontFamily: "'IBM Plex Mono', monospace" }}>CHI TIẾT LỖI VI PHẠM</h3>
-            <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-              <span style={styles.violationBadge}>VI PHẠM</span>
-              <span style={styles.assigneeBadgeRed}>{detailModalViolation.assignee}</span>
-              {detailModalViolation.penalty && <span style={styles.penaltyBadge}>Hình thức: {detailModalViolation.penalty}</span>}
-            </div>
-            <div style={styles.modalDetailTextBox}>
-              {detailModalViolation.text}
-            </div>
-            {detailModalViolation.image && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: THEME.textMuted, marginBottom: 6 }}>Hình ảnh đính kèm:</div>
-                <img 
-                  src={detailModalViolation.image} 
-                  alt="Vi phạm" 
-                  style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 6, border: `1px solid ${THEME.border}`, cursor: "pointer" }}
-                  onClick={() => setPreviewImageModal(detailModalViolation.image)}
-                />
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-              <button style={styles.confirmBtn} onClick={() => setDetailModalViolation(null)}>Đóng</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {previewImageModal && (
-        <div style={styles.modalOverlay} onClick={() => setPreviewImageModal(null)}>
-          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }} onClick={(e) => e.stopPropagation()}>
-            <img src={previewImageModal} alt="Phóng to" style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8 }} />
-            <button style={{ position: "absolute", top: -10, right: -10, background: THEME.danger, color: "#fff", border: "none", borderRadius: "50%", width: 30, height: 30, fontSize: 14, fontWeight: 700, cursor: "pointer" }} onClick={() => setPreviewImageModal(null)}>✕</button>
-          </div>
-        </div>
-      )}
-
-      {loaded && pickingName && mode === "staff" ? (
-        <div style={styles.namePicker}>
-          <h1 style={styles.title}>ZEN WORK</h1>
-          <div style={styles.subtitle}>TRẢNG BOM II</div>
-          <p style={styles.nameSub}>Chọn tên cá nhân của bạn để tiếp tục (Có thể yêu cầu nhập mã PIN bảo mật nếu đã được cài đặt).</p>
-          
-          {shifts.map(s => {
-            const list = staffMap[s] || [];
-            if (list.length === 0) return null;
-            return (
-              <div key={s} style={{ marginBottom: 20 }}>
-                <div style={styles.shiftGroupTitle}>NHÂN VIÊN CA {s.toUpperCase()}</div>
-                <div style={styles.nameGrid}>
-                  {list.map((name) => {
-                    const hasPin = !!staffPins[name];
-                    return (
-                      <button key={`${s}-${name}`} style={styles.nameBtn} onClick={() => handleSelectStaffName(name)}>
-                        {name} {hasPin && <span style={{ fontSize: 11, opacity: 0.8 }}>🔒</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          <button style={styles.switchToManagerBtn} onClick={requestManagerMode}>Tôi là quản lý →</button>
-        </div>
-      ) : (
-        <>
-          <div style={styles.header}>
-            <div>
-              <h1 style={styles.title}>ZEN WORK</h1>
-              <div style={styles.subtitle}>TRẢNG BOM II</div>
-            </div>
-            <div style={styles.modeToggle}>
-              <button onClick={() => setMode("staff")} style={{...styles.modeBtn, ...(mode === "staff" ? styles.modeBtnActive : {})}}>Nhân viên</button>
-              <button onClick={requestManagerMode} style={{...styles.modeBtn, ...(mode === "manager" ? styles.modeBtnActive : {})}}>Quản lý</button>
-            </div>
-          </div>
-
-          {mode === "staff" && myName && (
-            <div style={styles.whoRow}>
-              <span>Xin chào, <b style={{color: THEME.primary}}>{myName}</b></span>
-              <button style={styles.switchNameBtn} onClick={() => setPickingName(true)}>Đổi tên</button>
-            </div>
-          )}
-
-          <div style={styles.rail}>
-            {shifts.map((s) => {
-              const count = mode === "manager"
-                ? tasks.filter((t) => t.shift === s)
-                : tasks.filter((t) => t.shift === s && (t.assignee === EVERYONE || t.assignee === myName));
-              const done = count.filter((t) => t.done).length;
-              return (
-                <button key={s} className="rail-tab" onClick={() => setShift(s)}
-                  style={{...styles.railTab, ...(shift === s ? styles.railTabActive : {})}}>
-                  <span style={styles.railTabLabel}>{s}</span>
-                  <span style={styles.railTabCount}>{count.length ? `${done}/${count.length}` : "—"}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={styles.progressWrap}>
-            <div style={styles.progressText}>Ca {shift.toLowerCase()} · {doneCount}/{totalCount || 0} việc xong</div>
-            <div style={styles.progressBarBg}>
-              <div style={{...styles.progressBarFill, width: totalCount ? `${(doneCount/totalCount)*100}%` : "0%"}} />
-            </div>
-          </div>
-
-          {mode === "manager" && (
-            <div style={styles.managerBar}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: THEME.primary }}>CẤU HÌNH QUẢN LÝ</span>
-                <button style={styles.switchNameBtn} onClick={() => setShowChangePin(!showChangePin)}>Đổi mã PIN Quản lý</button>
-              </div>
-
-              {showChangePin && (
-                <div style={styles.changePinBox}>
-                  <input type="password" placeholder="Mã PIN mới..." value={newPinInput} onChange={(e) => setNewPinInput(e.target.value)} style={styles.inputSmall} />
-                  <button style={styles.smallBtn} onClick={handleChangePin}>Lưu PIN</button>
-                </div>
-              )}
-
-              <div style={styles.addAreaRow}>
-                <input value={newShiftInput} onChange={(e) => setNewShiftInput(e.target.value)}
-                  placeholder="Thêm ca làm mới..." style={styles.inputSmall}
-                  onKeyDown={(e) => e.key === "Enter" && addShift()} />
-                <button style={styles.smallBtn} onClick={addShift}>+ Ca làm</button>
-              </div>
-              {shifts.length > 0 && (
-                <div style={styles.staffChipsRow}>
-                  {shifts.map((s) => (
-                    <span key={s} style={styles.staffChip}>
-                      Ca {s}
-                      {shifts.length > 1 && <button style={styles.staffChipX} onClick={() => removeShift(s)}>✕</button>}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div style={styles.addAreaRow}>
-                <input value={newStaffInput} onChange={(e) => setNewStaffInput(e.target.value)}
-                  placeholder={`Thêm nhân viên ca ${shift.toLowerCase()}...`} style={styles.inputSmall}
-                  onKeyDown={(e) => e.key === "Enter" && addStaff()} />
-                <button style={styles.smallBtn} onClick={addStaff}>+ Nhân viên</button>
-              </div>
-              {currentShiftStaff.length > 0 ? (
-                <div style={styles.staffChipsRow}>
-                  {currentShiftStaff.map((s) => {
-                    const hasPin = !!staffPins[s];
-                    return (
-                      <span key={s} style={{...styles.staffChip, background: hasPin ? "#E1F5FE" : "#FFF"}}>
-                        <span onClick={() => { setTargetStaffForPin(s); setNewStaffPinInput(staffPins[s] || ""); setStaffSettingModal(true); }} style={{ cursor: "pointer" }} title="Nhấn để cấu hình mật khẩu cá nhân">
-                          {s} {hasPin ? "🔒" : "🔓"}
-                        </span>
-                        <button style={styles.staffChipX} onClick={() => removeStaff(s)}>✕</button>
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={styles.noStaffHint}>Chưa có nhân viên nào trong Ca {shift}. Vui lòng thêm nhân viên để tiện ghi nhận vi phạm hoặc giao việc riêng.</div>
-              )}
-
-              <div style={styles.addAreaRow}>
-                <input value={newAreaInput} onChange={(e) => setNewAreaInput(e.target.value)}
-                  placeholder="Thêm khu vực mới…" style={styles.inputSmall}
-                  onKeyDown={(e) => e.key === "Enter" && addArea()} />
-                <button style={styles.smallBtn} onClick={addArea}>+ Khu vực</button>
-              </div>
-              {areas.length > 0 && (
-                <div style={styles.staffChipsRow}>
-                  {areas.map((a) => (
-                    <span key={a} style={styles.staffChip}>{a}</span>
-                  ))}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button style={{...styles.addTaskBtn, flex: 1}} onClick={() => { setFormOpen(v => !v); setFShift(shift); }}>
-                  {formOpen ? "▲ Đóng Giao việc" : "+ Giao việc mới"}
-                </button>
-                <button style={{...styles.addViolationBtn, flex: 1}} onClick={() => { setViolationFormOpen(v => !v); setVShift(shift); if(currentShiftStaff.length > 0) setVAssignee(currentShiftStaff[0]); }}>
-                  {violationFormOpen ? "▲ Đóng Vi phạm" : "+ Ghi nhận vi phạm"}
-                </button>
-              </div>
-
-              {formOpen && (
-                <div style={styles.form}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: THEME.primary, marginBottom: 4 }}>📝 BẢNG GIAO CÔNG VIỆC MỚI</div>
-                  <textarea value={fText} onChange={(e) => setFText(e.target.value)}
-                    placeholder="Nhập nội dung công việc cụ thể..." style={styles.textarea} rows={3} />
-                  <div style={styles.formRow}>
-                    <div style={{flex: 1}}>
-                      <label style={styles.labelField}>Chọn Ca:</label>
-                      <select value={fShift} onChange={(e) => {
-                        const ns = e.target.value;
-                        setFShift(ns);
-                        const staffList = staffMap[ns] || [];
-                        if (fAssignee !== EVERYONE && !staffList.includes(fAssignee)) {
-                          setFAssignee(EVERYONE);
-                        }
-                      }} style={styles.select}>
-                        {shifts.map((s) => <option key={s} value={s}>Ca {s.toLowerCase()}</option>)}
-                      </select>
-                    </div>
-                    <div style={{flex: 1}}>
-                      <label style={styles.labelField}>Khu vực:</label>
-                      <select value={fArea} onChange={(e) => setFArea(e.target.value)} style={styles.select}>
-                        {areas.length === 0 ? <option value="Chung">Chung</option> : areas.map((a) => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={styles.formRow}>
-                    <div style={{flex: 1}}>
-                      <label style={styles.labelField}>Người nhận:</label>
-                      <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} style={styles.select}>
-                        <option value={EVERYONE}>Giao cho: Cả ca</option>
-                        {formShiftStaff.map((s) => <option key={s} value={s}>Giao riêng: {s}</option>)}
-                      </select>
-                    </div>
-                    <div style={{flex: 1}}>
-                      <label style={styles.labelField}>Giờ hoàn thành (nếu có):</label>
-                      <input value={fTime} onChange={(e) => setFTime(e.target.value)} placeholder="VD: 14:30" style={styles.inputSmallFull} />
-                    </div>
-                  </div>
-                  <button style={styles.submitBtn} onClick={addTask}>✓ Ghim vào bảng công việc</button>
-                </div>
-              )}
-
-              {violationFormOpen && (
-                <div style={{...styles.form, borderColor: THEME.danger, background: "#FFF5F5"}}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: THEME.danger, marginBottom: 4 }}>⚠️ GHI NHẬN LỖI VI PHẠM NHÂN VIÊN</div>
-                  <textarea value={vText} onChange={(e) => setVText(e.target.value)}
-                    placeholder="Mô tả chi tiết lỗi vi phạm..." style={{...styles.textarea, borderColor: "#F5C6CB"}} rows={3} />
-                  <div style={styles.formRow}>
-                    <div style={{flex: 1}}>
-                      <label style={styles.labelField}>Chọn Ca:</label>
-                      <select value={vShift} onChange={(e) => {
-                        const ns = e.target.value;
-                        setVShift(ns);
-                        const staffList = staffMap[ns] || [];
-                        if (!staffList.includes(vAssignee)) {
-                          setVAssignee(staffList[0] || "");
-                        }
-                      }} style={styles.select}>
-                        {shifts.map((s) => <option key={s} value={s}>Ca {s.toLowerCase()}</option>)}
-                      </select>
-                    </div>
-                    <div style={{flex: 1}}>
-                      <label style={styles.labelField}>Nhân viên vi phạm:</label>
-                      <select value={vAssignee} onChange={(e) => setVAssignee(e.target.value)} style={styles.select}>
-                        {violationFormShiftStaff.length === 0 ? (
-                          <option value="">(Chưa có nhân viên trong ca)</option>
-                        ) : (
-                          violationFormShiftStaff.map((s) => <option key={s} value={s}>{s}</option>)
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{marginTop: 4}}>
-                    <label style={styles.labelField}>Hình thức xử lý / Hình phạt:</label>
-                    <input value={vPenalty} onChange={(e) => setVPenalty(e.target.value)} placeholder="VD: Phạt 50k, Nhắc nhở lần 1..." style={styles.inputSmallFull} />
-                  </div>
-                  
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-                    <label style={styles.uploadBtnLabel}>
-                      📷 Đính kèm hình ảnh minh chứng
-                      <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
-                    </label>
-                    {vImage && <span style={{ fontSize: 12, color: THEME.success, fontWeight: 600 }}>✓ Đã chọn 1 ảnh</span>}
-                  </div>
-                  {vImage && (
-                    <div style={{ position: "relative", width: 80, height: 80, marginTop: 6 }}>
-                      <img src={vImage} alt="Preview" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 6, border: `1px solid ${THEME.border}` }} />
-                      <button style={{ position: "absolute", top: -6, right: -6, background: THEME.danger, color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer" }} onClick={() => setVImage("")}>✕</button>
-                    </div>
-                  )}
-
-                  <button style={styles.submitViolationBtn} onClick={addViolation}>Gửi lỗi vi phạm cho nhân viên</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {(visibleViolations.length > 0 || mode === "manager") && (
-            <div style={styles.sectionContainer}>
-              <div style={styles.sectionHeader}>
-                <span style={styles.sectionTitleRed}>⚠️ XÁC NHẬN LỖI VI PHẠM ({confirmedViolationCount}/{totalViolationCount})</span>
-              </div>
-              <div style={styles.ticketList}>
-                {visibleViolations.length === 0 && (
-                  <div style={styles.emptyState}>
-                    {mode === "manager" ? `Chưa có lỗi vi phạm nào trong ca ${shift.toLowerCase()}.` : `Bạn không có lỗi vi phạm nào cần xác nhận trong ca ${shift.toLowerCase()}.`}
-                  </div>
-                )}
-                {visibleViolations.map((v) => (
-                  <div key={v.id} className="ticket" style={{...styles.violationTicket, ...(v.confirmed ? styles.ticketDone : {})}}>
-                    <div style={styles.violationCardInner}>
-                      <button onClick={() => toggleViolationConfirm(v.id)} style={styles.checkZoneViolation} title="Bấm để xác nhận đã nhận lỗi">
-                        <span style={{...styles.checkbox, borderColor: THEME.danger, ...(v.confirmed ? styles.violationCheckboxDone : {})}}>
-                          {v.confirmed ? "✓" : ""}
-                        </span>
-                      </button>
-
-                      <div style={styles.ticketBody}>
-                        <div style={styles.ticketTop}>
-                          <div style={styles.badgeGroup}>
-                            <span style={styles.violationBadge}>VI PHẠM</span>
-                            <span style={styles.assigneeBadgeRed}>{v.assignee}</span>
-                          </div>
-                          {v.penalty && <span style={styles.penaltyBadge}>Hình thức: {v.penalty}</span>}
-                        </div>
-
-                        <div style={{...styles.ticketTextClamp, ...(v.confirmed ? styles.ticketTextDone : {})}}>{v.text}</div>
-                        
-                        {v.image && (
-                          <div style={{ marginTop: 6 }}>
-                            <img 
-                              src={v.image} 
-                              alt="Minh chứng vi phạm" 
-                              style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 4, border: `1px solid ${THEME.border}`, cursor: "pointer" }}
-                              onClick={() => setDetailModalViolation(v)}
-                            />
-                          </div>
-                        )}
-
-                        <div style={styles.ticketMeta}>
-                          {v.confirmed ? (
-                            <span style={{ color: THEME.success, fontWeight: 600 }}>✓ Đã xác nhận bởi {v.confirmedBy}</span>
-                          ) : (
-                            <span style={{ color: THEME.danger, fontWeight: 600 }}>Chờ nhân viên xác nhận</span>
-                          )}
-                          {mode === "manager" && (
-                            <button style={styles.deleteBtn} onClick={() => deleteViolation(v.id)}>Xóa</button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={styles.sectionContainer}>
-            <div style={styles.sectionHeader}>
-              <span style={styles.sectionTitle}>📋 DANH SÁCH CÔNG VIỆC CA {shift.toUpperCase()}</span>
-            </div>
-            <div style={styles.ticketList}>
-              {visibleTasks.length === 0 && (
-                <div style={styles.emptyState}>
-                  {mode === "manager" ? `Chưa có công việc nào trong ca ${shift.toLowerCase()}.` : `Không có công việc nào dành cho bạn trong ca ${shift.toLowerCase()}.`}
-                </div>
-              )}
-              {visibleTasks.map((t) => (
-                <div key={t.id} className="ticket" style={{...styles.ticket, ...(t.done ? styles.ticketDone : {})}}>
-                  {stampId === t.id && (
-                    <div style={styles.stampOverlay}>
-                      <div className="stamp" style={styles.stampBox}>XONG</div>
-                    </div>
-                  )}
-                  <div style={styles.ticketInner}>
-                    <button onClick={() => toggleDone(t.id)} style={styles.checkZone} title="Bấm để hoàn thành">
-                      <span style={{...styles.checkbox, ...(t.done ? styles.checkboxDone : {})}}>
-                        {t.done ? "✓" : ""}
-                      </span>
-                    </button>
-                    <div style={styles.ticketBody}>
-                      <div style={styles.ticketTop}>
-                        <div style={styles.badgeGroup}>
-                          <span style={styles.areaBadge}>{t.area}</span>
-                          <span style={t.assignee === EVERYONE ? styles.assigneeBadgeAll : styles.assigneeBadgeOne}>
-                            {t.assignee === EVERYONE ? "Cả ca" : t.assignee}
-                          </span>
-                        </div>
-                        {t.time && <span style={styles.timeBadge}>⏰ {t.time}</span>}
-                      </div>
-                      <div style={{...styles.ticketTextClamp, ...(t.done ? styles.ticketTextDone : {})}}>{t.text}</div>
-                      <div style={styles.ticketMeta}>
-                        {t.done ? (
-                          <span style={{ color: THEME.success, fontWeight: 600 }}>✓ Xong bởi {t.doneBy}</span>
-                        ) : (
-                          <span style={{ color: THEME.textMuted }}>Đang thực hiện...</span>
-                        )}
-                        {mode === "manager" && (
-                          <button style={styles.deleteBtn} onClick={() => deleteTask(t.id)}>Xóa</button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+  return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', padding: '16px 12px 60px' } },
+    React.createElement('div', { style: { background: '#fff', padding: 20, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', textAlign: 'center' } },
+      React.createElement('h1', { style: { color: '#1B4332', fontFamily: "'Oswald', sans-serif", margin: 0 } }, "ZEN WORK · TRẢNG BOM II"),
+      React.createElement('p', { style: { color: '#2D6A4F', fontSize: 13, marginTop: 6 } }, "Hệ thống quản lý công việc và phân ca đã sẵn sàng hoạt động ổn định!"),
+      React.createElement('div', { style: { marginTop: 16 } },
+        React.createElement('button', { 
+          onClick: () => {
+            const name = prompt("Nhập tên nhân viên của bạn:");
+            if(name) {
+              setMyName(name);
+              localStorage.setItem("pr-my-name", name);
+              setPickingName(false);
+            }
+          }, 
+          style: { background: '#1B4332', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+        }, myName ? `Đang đăng nhập: ${myName} (Đổi tên)` : "Chọn tên nhân viên")
+      )
+    )
   );
 }
 
-const styles = {
-  page: { maxWidth: 680, margin: "0 auto", padding: "16px 12px 60px", fontFamily: "'Inter', sans-serif", background: THEME.bgPage, minHeight: "100vh" },
-  namePicker: { background: THEME.bgCard, borderRadius: 12, padding: "24px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", textAlign: "center", marginTop: 40 },
-  nameSub: { fontSize: 13, color: THEME.textMuted, marginBottom: 20 },
-  shiftGroupTitle: { fontSize: 11, fontWeight: 700, color: THEME.textMuted, letterSpacing: 0.5, marginBottom: 8, textAlign: "left", fontFamily: "'IBM Plex Mono', monospace" },
-  nameGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8, marginBottom: 12 },
-  nameBtn: { background: "#F1F8E9", border: `1px solid ${THEME.border}`, borderRadius: 8, padding: "10px 8px", fontSize: 14, fontWeight: 600, color: THEME.primary, cursor: "pointer", transition: "all .15s" },
-  switchToManagerBtn: { background: "none", border: `1px dashed ${THEME.primary}`, color: THEME.primary, padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", marginTop: 12 },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
-  title: { fontSize: 22, fontWeight: 700, color: THEME.primary, margin: 0, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 },
-  subtitle: { fontSize: 11, fontWeight: 600, color: THEME.textMuted, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 2 },
-  modeToggle: { display: "flex", background: "#C8E6C9", padding: 3, borderRadius: 8, gap: 2 },
-  modeBtn: { background: "transparent", border: "none", padding: "6px 12px", fontSize: 12, fontWeight: 600, color: THEME.primary, cursor: "pointer", borderRadius: 6 },
-  modeBtnActive: { background: THEME.primary, color: "#FFFFFF" },
-  whoRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FFFFFF", padding: "8px 12px", borderRadius: 8, fontSize: 13, marginBottom: 12, border: `1px solid ${THEME.border}` },
-  switchNameBtn: { background: "none", border: `1px solid ${THEME.primary}`, color: THEME.primary, padding: "2px 8px", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 600 },
-  rail: { display: "flex", gap: 8, marginBottom: 12, overflowX: "auto", paddingBottom: 4 },
-  railTab: { flex: 1, minWidth: 100, background: "#FFFFFF", border: `1px solid ${THEME.border}`, borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", cursor: "pointer" },
-  railTabActive: { background: THEME.primary, borderColor: THEME.primary },
-  railTabLabel: { fontSize: 13, fontWeight: 700, color: THEME.primary, fontFamily: "'Oswald', sans-serif" },
-  railTabCount: { fontSize: 11, color: THEME.textMuted, marginTop: 2, fontFamily: "'IBM Plex Mono', monospace" },
-  progressWrap: { background: "#FFFFFF", borderRadius: 8, padding: "10px 14px", marginBottom: 16, border: `1px solid ${THEME.border}` },
-  progressText: { fontSize: 12, fontWeight: 600, color: THEME.primary, marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace" },
-  progressBarBg: { background: "#E8F5E9", height: 6, borderRadius: 3, overflow: "hidden" },
-  progressBarFill: { background: THEME.success, height: "100%", transition: "width .3s ease" },
-  managerBar: { background: "#FFFFFF", borderRadius: 10, padding: 14, marginBottom: 16, border: `1px solid ${THEME.border}` },
-  changePinBox: { display: "flex", gap: 6, marginBottom: 10 },
-  addAreaRow: { display: "flex", gap: 6, marginBottom: 8 },
-  inputSmall: { flex: 1, padding: "6px 10px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 13 },
-  inputSmallFull: { width: "100%", padding: "6px 10px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 13 },
-  smallBtn: { background: THEME.primary, color: "#FFFFFF", border: "none", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  staffChipsRow: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 },
-  staffChip: { background: "#F1F8E9", border: `1px solid ${THEME.border}`, padding: "3px 8px", borderRadius: 6, fontSize: 12, color: THEME.primary, display: "flex", alignItems: "center", gap: 4, fontWeight: 500 },
-  staffChipX: { background: "none", border: "none", color: THEME.danger, fontSize: 11, cursor: "pointer", fontWeight: 700 },
-  noStaffHint: { fontSize: 12, color: THEME.textMuted, fontStyle: "italic", marginBottom: 8 },
-  addTaskBtn: { background: THEME.success, color: "#FFFFFF", border: "none", padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  addViolationBtn: { background: THEME.danger, color: "#FFFFFF", border: "none", padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  form: { background: "#F1F8E9", borderRadius: 8, padding: 12, marginTop: 10, border: `1px solid ${THEME.border}` },
-  formRow: { display: "flex", gap: 8, marginBottom: 8 },
-  labelField: { display: "block", fontSize: 11, fontWeight: 600, color: THEME.textMuted, marginBottom: 3 },
-  textarea: { width: "100%", padding: "8px 10px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 13, resize: "vertical", fontFamily: "inherit", marginBottom: 8 },
-  select: { width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 13, background: "#FFFFFF" },
-  submitBtn: { width: "100%", background: THEME.primary, color: "#FFFFFF", border: "none", padding: "8px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", marginTop: 4 },
-  submitViolationBtn: { width: "100%", background: THEME.danger, color: "#FFFFFF", border: "none", padding: "8px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", marginTop: 8 },
-  uploadBtnLabel: { display: "inline-block", background: "#FFFFFF", border: `1px solid ${THEME.border}`, padding: "6px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, color: THEME.primary, cursor: "pointer" },
-  sectionContainer: { marginBottom: 16 },
-  sectionHeader: { marginBottom: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: 700, color: THEME.primary, letterSpacing: 0.5, fontFamily: "'IBM Plex Mono', monospace" },
-  sectionTitleRed: { fontSize: 12, fontWeight: 700, color: THEME.danger, letterSpacing: 0.5, fontFamily: "'IBM Plex Mono', monospace" },
-  ticketList: { display: "flex", flexDirection: "column", gap: 8 },
-  ticket: { background: THEME.ticketBg, borderRadius: 8, border: `1px solid ${THEME.border}`, position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" },
-  violationTicket: { background: "#FFF", borderRadius: 8, border: `1px solid #F5C6CB`, position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(230,57,70,0.05)" },
-  ticketDone: { background: "#F4F9F4", opacity: 0.85 },
-  ticketInner: { display: "flex", alignItems: "stretch" },
-  violationCardInner: { display: "flex", alignItems: "stretch" },
-  checkZone: { width: 44, background: "transparent", border: "none", borderRight: `1px solid ${THEME.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 },
-  checkZoneViolation: { width: 44, background: "transparent", border: "none", borderRight: `1px solid #F5C6CB`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 },
-  checkbox: { width: 22, height: 22, borderRadius: 4, border: `2px solid ${THEME.primary}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 13, fontWeight: 700 },
-  checkboxDone: { background: THEME.success, borderColor: THEME.success },
-  violationCheckboxDone: { background: THEME.danger, borderColor: THEME.danger },
-  ticketBody: { flex: 1, padding: "10px 12px" },
-  ticketTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 4 },
-  badgeGroup: { display: "flex", gap: 6, alignItems: "center" },
-  areaBadge: { background: "#E8F5E9", color: THEME.primary, padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace" },
-  violationBadge: { background: "#FFEBEE", color: THEME.danger, padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace" },
-  assigneeBadgeAll: { background: "#EFEBE9", color: "#4E342E", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 },
-  assigneeBadgeOne: { background: "#E3F2FD", color: "#0D47A1", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 },
-  assigneeBadgeRed: { background: "#FFEBEE", color: THEME.danger, padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 },
-  penaltyBadge: { background: "#FFF3E0", color: "#E65100", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 },
-  timeBadge: { fontSize: 10, color: THEME.textMuted, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 },
-  ticketTextClamp: { fontSize: 13, color: THEME.textDark, lineHeight: 1.4, wordBreak: "break-word" },
-  ticketTextDone: { textDecoration: "line-through", color: "#78909C" },
-  ticketMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, fontSize: 11 },
-  deleteBtn: { background: "none", border: "none", color: THEME.danger, cursor: "pointer", fontSize: 11, fontWeight: 600 },
-  emptyState: { background: "#FFFFFF", borderRadius: 8, padding: "16px", textAlign: "center", color: THEME.textMuted, fontSize: 13, border: `1px dashed ${THEME.border}` },
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 },
-  modalContent: { background: "#FFFFFF", borderRadius: 10, padding: 20, width: "100%", maxWidth: 340, boxShadow: "0 4px 16px rgba(0,0,0,0.15)" },
-  inputModal: { width: "100%", padding: "10px", borderRadius: 6, border: `1px solid ${THEME.border}`, fontSize: 14, marginBottom: 10 },
-  modalActions: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 },
-  cancelBtn: { background: "#EFEBE9", color: "#4E342E", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  confirmBtn: { background: THEME.primary, color: "#FFFFFF", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  errorText: { color: THEME.danger, fontSize: 12, marginBottom: 8, fontWeight: 600 },
-  modalDetailTextBox: { background: "#F8F9FA", padding: 10, borderRadius: 6, fontSize: 13, border: `1px solid ${THEME.border}`, whiteSpace: "pre-wrap", wordBreak: "break-word" }
-};
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
 </script>
 </body>
 </html>
