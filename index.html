@@ -307,6 +307,7 @@ function App() {
               ),
               React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
                 React.createElement('button', {
+                  title: isDone ? "Bỏ hoàn thành" : "Đánh dấu đã làm xong",
                   onClick: () => {
                     const nextTasks = tasks.map(item => {
                       if (item.id === t.id) {
@@ -319,17 +320,21 @@ function App() {
                     persist(nextTasks);
                   },
                   style: {
-                    background: isDone ? '#E8F5E9' : '#1B4332',
-                    color: isDone ? '#388E3C' : '#fff',
-                    border: 'none',
-                    padding: '7px 12px',
+                    width: 32,
+                    height: 32,
+                    background: isDone ? '#388E3C' : '#fff',
+                    color: isDone ? '#fff' : '#ccc',
+                    border: `2px solid ${isDone ? '#388E3C' : '#CBD5E1'}`,
                     borderRadius: 6,
-                    fontWeight: 600,
-                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: 16,
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap'
+                    transition: 'all 0.2s'
                   }
-                }, isDone ? 'Đã xong ✓' : 'Làm xong'),
+                }, isDone ? '✓' : ''),
                 mode === 'manager' && React.createElement('button', {
                   onClick: () => {
                     if(confirm("Xóa công việc này?")) {
@@ -362,21 +367,54 @@ function App() {
           mode === 'manager' ? "Không có biên bản vi phạm nào." : "Tuyệt vời! Bạn không có vi phạm nào trong hệ thống."
         ) :
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 } },
-          visibleViolations.map(v =>
-            React.createElement('div', { key: v.id, style: { background: '#FFF5F5', border: '1px solid #FFCDD2', padding: 12, borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-              React.createElement('div', { style: { flex: 1, paddingRight: 10, overflow: 'hidden' } },
-                React.createElement('div', { style: { fontWeight: 600, color: '#C62828', fontSize: 13 } }, `${v.assignee} (Ca ${v.shift})`),
-                React.createElement('div', { 
-                  style: { 
-                    fontSize: 13, 
-                    color: '#333', 
-                    marginTop: 2, 
-                    whiteSpace: 'nowrap', 
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis' 
-                  } 
-                }, v.text),
-                v.penalty && React.createElement('div', { style: { fontSize: 12, color: '#D32F2F', fontWeight: 600, marginTop: 2 } }, `Hình thức xử lí: ${v.penalty}`)
+          visibleViolations.map(v => {
+            const isConfirmed = v.confirmed === true;
+            return React.createElement('div', { key: v.id, style: { background: isConfirmed ? '#F0FDF4' : '#FFF5F5', border: `1px solid ${isConfirmed ? '#BBF7D0' : '#FFCDD2'}`, padding: 12, borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flex: 1, paddingRight: 10, overflow: 'hidden' } },
+                React.createElement('button', {
+                  title: isConfirmed ? "Đã xác nhận lỗi" : "Bấm vào để tích xác nhận lỗi",
+                  onClick: () => {
+                    const nextViolations = violations.map(item => {
+                      if (item.id === v.id) {
+                        return { ...item, confirmed: !item.confirmed };
+                      }
+                      return item;
+                    });
+                    persist(undefined, nextViolations);
+                  },
+                  style: {
+                    width: 24,
+                    height: 24,
+                    background: isConfirmed ? '#16A34A' : '#fff',
+                    color: isConfirmed ? '#fff' : 'transparent',
+                    border: `2px solid ${isConfirmed ? '#16A34A' : '#EF4444'}`,
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }
+                }, isConfirmed ? '✓' : ''),
+                React.createElement('div', { style: { overflow: 'hidden', flex: 1 } },
+                  React.createElement('div', { style: { fontWeight: 600, color: '#C62828', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } }, 
+                    `${v.assignee} (Ca ${v.shift})`,
+                    isConfirmed && React.createElement('span', { style: { fontSize: 10, background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 600 } }, "Đã xác nhận")
+                  ),
+                  React.createElement('div', { 
+                    style: { 
+                      fontSize: 13, 
+                      color: '#333', 
+                      marginTop: 2, 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis' 
+                    } 
+                  }, v.text),
+                  v.penalty && React.createElement('div', { style: { fontSize: 12, color: '#D32F2F', fontWeight: 600, marginTop: 2 } }, `Hình thức xử lí: ${v.penalty}`)
+                )
               ),
               React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 } },
                 React.createElement('button', {
@@ -392,8 +430,8 @@ function App() {
                   style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontSize: 16 }
                 }, '×')
               )
-            )
-          )
+            );
+          })
         )
     ),
 
@@ -622,7 +660,8 @@ function App() {
                 assignee: vAssignee,
                 text: vText,
                 penalty: vPenalty,
-                shift: vShift
+                shift: vShift,
+                confirmed: false
               };
               persist(undefined, [newV, ...violations]);
               setVAssignee('');
