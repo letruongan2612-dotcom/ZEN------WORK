@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ZEN WORK · Trảng Bom II</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500&family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E8F5E9; }
+  .rail-tab { transition: transform .15s ease, background .15s ease; }
+  .rail-tab:active { transform: translateY(2px); }
+  .ticket { transition: transform .15s ease, box-shadow .15s ease; }
+  .ticket:hover { transform: translateY(-2px); }
+  @keyframes stampIn {
+    0% { transform: scale(2.4) rotate(-18deg); opacity: 0; }
+    55% { transform: scale(0.92) rotate(-12deg); opacity: 1; }
+    75% { transform: scale(1.06) rotate(-12deg); }
+    100% { transform: scale(1) rotate(-12deg); opacity: 1; }
+  }
+  .stamp { animation: stampIn .5s cubic-bezier(.2,.9,.3,1.2); }
+  input:focus, textarea:focus, select:focus { outline: 2px solid #2D6A4F; outline-offset: 1px; }
+  button:focus-visible { outline: 2px solid #2D6A4F; outline-offset: 2px; }
+  ::-webkit-scrollbar { height: 6px; width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #C8E6C9; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback } = React;
+
+const JSONBIN_ID = "6a8fe5e0da38895dfe16d014";
+const JSONBIN_KEY = "$2a$10$KEp.t5bZ4ab3EEbMeRmjxOuYe70iE8aHzBT3MmVDm9oy88ge2p1ta";
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
+
+const DEFAULT_SHIFTS = ["Sáng", "Tối"];
+const EVERYONE = "Cả ca";
+
+const THEME = {
+  bgPage: "#E8F5E9",
+  bgCard: "#FFFFFF",
+  primary: "#1B4332",
+  accent: "#81C784",
+  accentSoft: "#C8E6C9",  
+  textDark: "#1B4332",
+  textMuted: "#2D6A4F",
+  textLight: "#4CAF50",
+  border: "#C8E6C9",
+  ticketBg: "#FFFFFF",
+  success: "#388E3C",
+  danger: "#E63946"
+};
+
+async function loadBoard() {
+  const res = await fetch(`${JSONBIN_URL}/latest`, {
+    headers: { "X-Master-Key": JSONBIN_KEY },
+  });
+  if (!res.ok) throw new Error("Không tải được dữ liệu");
+  const data = await res.json();
+  return data.record;
+}
+
+async function saveBoard(record) {
+  const res = await fetch(JSONBIN_URL, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": JSONBIN_KEY,
+    },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) throw new Error("Không lưu được dữ liệu");
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function App() {
+  const [mode, setMode] = useState("staff");
+  const [shifts, setShifts] = useState(DEFAULT_SHIFTS);
+  const [shift, setShift] = useState(DEFAULT_SHIFTS[0]);
+  const [areas, setAreas] = useState([]);
+  const [staffMap, setStaffMap] = useState({});
+  const [tasks, setTasks] = useState([]);
+  const [violations, setViolations] = useState([]);
+  const [pinCode, setPinCode] = useState("1234");
+  
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [stampId, setStampId] = useState(null);
+  const [violationStampId, setViolationStampId] = useState(null);
+
+  const [myName, setMyName] = useState(localStorage.getItem("pr-my-name") || "");
+  const [pickingName, setPickingName] = useState(!localStorage.getItem("pr-my-name"));
+
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [inputPin, setInputPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [showChangePin, setShowChangePin] = useState(false);
+  const [newPinInput, setNewPinInput] = useState("");
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [fText, setFText] = useState("");
+  const [fArea, setFArea] = useState("");
+  const [fAssignee, setFAssignee] = useState(EVERYONE);
+  const [fShift, setFShift] = useState(DEFAULT_SHIFTS[0]);
+  const [fTime, setFTime] = useState("");
+
+  const [violationFormOpen, setViolationFormOpen] = useState(false);
+  const [vText, setVText] = useState("");
+  const [vPenalty, setVPenalty] = useState("");
+  const [vAssignee, setVAssignee] = useState("");
+  const [vShift, setVShift] = useState(DEFAULT_SHIFTS[0]);
+  const [vImage, setVImage] = useState("");
+
+  const [detailModalViolation, setDetailModalViolation] = useState(null);
+  const [previewImageModal, setPreviewImageModal] = useState(null);
+  
+  const [newAreaInput, setNewAreaInput] = useState("");
+  const [newStaffInput, setNewStaffInput] = useState("");
+  const [newShiftInput, setNewShiftInput] = useState("");
+
+  const persist = useCallback(async (next) => {
+    setTasks(next.tasks);
+    setViolations(next.violations || []);
+    setAreas(next.areas);
+    setStaffMap(next.staffMap);
+    setShifts(next.shifts);
+    setPinCode(next.pinCode || "1234");
+    try {
+      await saveBoard(next);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const record = await loadBoard();
+        const loadedShifts = record.shifts && record.shifts.length > 0 ? record.shifts : DEFAULT_SHIFTS;
+        
+        let initialStaffMap = {};
+        if (record.staffMap) {
+          initialStaffMap = record.staffMap;
+        } else if (Array.isArray(record.staff)) {
+          initialStaffMap[loadedShifts[0]] = record.staff;
+        }
+
+        loadedShifts.forEach(s => {
+          if (!initialStaffMap[s]) initialStaffMap[s] = [];
+        });
+
+        const firstStaffOfShift = initialStaffMap[loadedShifts[0]]?.[0] || "";
+
+        setTasks(record.tasks || []);
+        setViolations(record.violations || []);
+        setAreas(record.areas || []);
+        setStaffMap(initialStaffMap);
+        setShifts(loadedShifts);
+        setShift(loadedShifts[0]);
+        setFShift(loadedShifts[0]);
+        setVShift(loadedShifts[0]);
+        setVAssignee(firstStaffOfShift);
+        setPinCode(record.pinCode || "1234");
+        if (record.areas && record.areas.length) setFArea(record.areas[0]);
+      } catch (e) {
+        console.error(e);
+        setLoadError(true);
+      }
+      setLoaded(true);
+    })();
+  }, []);
+
+  const requestManagerMode = () => {
+    setInputPin("");
+    setPinError("");
+    setShowPinModal(true);
+  };
+
+  const handleVerifyPin = () => {
+    if (inputPin === pinCode) {
+      setMode("manager");
+      setShowPinModal(false);
+      setInputPin("");
+      setPinError("");
+    } else {
+      setPinError("Mật khẩu không đúng!");
+    }
+  };
+
+  const handleChangePin = () => {
+    if (!newPinInput.trim()) return;
+    const nextPin = newPinInput.trim();
+    persist({ tasks, violations, areas, staffMap, shifts, pinCode: nextPin });
+    setNewPinInput("");
+    setShowChangePin(false);
+    alert("Đã đổi mật khẩu quản lý thành công!");
+  };
+
+  const chooseMyName = (name) => {
+    setMyName(name);
+    setPickingName(false);
+    localStorage.setItem("pr-my-name", name);
+  };
+
+  const toggleDone = (id) => {
+    const nextTasks = tasks.map((t) =>
+      t.id === id
+        ? { ...t, done: !t.done, doneAt: !t.done ? Date.now() : null, doneBy: !t.done ? myName || null : null }
+        : t
+    );
+    if (nextTasks.find((t) => t.id === id).done) {
+      setStampId(id);
+      setTimeout(() => setStampId(null), 900);
+    }
+    persist({ tasks: nextTasks, violations, areas, staffMap, shifts, pinCode });
+  };
+
+  const deleteTask = (id) => {
+    persist({ tasks: tasks.filter((t) => t.id !== id), violations, areas, staffMap, shifts, pinCode });
+  };
+
+  const addTask = () => {
+    if (!fText.trim()) return;
+    const t = {
+      id: uid(), shift: fShift, area: fArea, assignee: fAssignee,
+      text: fText.trim(), time: fTime, done: false, doneAt: null, doneBy: null,
+      createdAt: Date.now(),
+    };
+    persist({ tasks: [...tasks, t], violations, areas, staffMap, shifts, pinCode });
+    setFText(""); setFTime(""); setFormOpen(false);
+  };
+
+  const toggleViolationConfirm = (id) => {
+    const nextViolations = violations.map((v) =>
+      v.id === id
+        ? { ...v, confirmed: !v.confirmed, confirmedAt: !v.confirmed ? Date.now() : null, confirmedBy: !v.confirmed ? myName || null : null }
+        : v
+    );
+    if (nextViolations.find((v) => v.id === id).confirmed) {
+      setViolationStampId(id);
+      setTimeout(() => setViolationStampId(null), 900);
+    }
+    persist({ tasks, violations: nextViolations, areas, staffMap, shifts, pinCode });
+  };
+
+  const deleteViolation = (id) => {
+    persist({ tasks, violations: violations.filter((v) => v.id !== id), areas, staffMap, shifts, pinCode });
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setVImage(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addViolation = () => {
+    if (!vText.trim() || !vAssignee) return;
+    const v = {
+      id: uid(), shift: vShift, assignee: vAssignee,
+      text: vText.trim(), penalty: vPenalty.trim(), image: vImage || null,
+      confirmed: false, confirmedAt: null, confirmedBy: null,
+      createdAt: Date.now(),
+    };
+    persist({ tasks, violations: [...violations, v], areas, staffMap, shifts, pinCode });
+    setVText(""); setVPenalty(""); setVImage(""); setViolationFormOpen(false);
+  };
+
+  const addArea = () => {
+    const name = newAreaInput.trim();
+    if (!name || areas.includes(name)) return;
+    persist({ tasks, violations, areas: [...areas, name], staffMap, shifts, pinCode });
+    setNewAreaInput("");
+  };
+
+  const addStaff = () => {
+    const name = newStaffInput.trim();
+    const currentShiftStaff = staffMap[shift] || [];
+    if (!name || currentShiftStaff.includes(name)) return;
+    const nextMap = { ...staffMap, [shift]: [...currentShiftStaff, name] };
+    persist({ tasks, violations, areas, staffMap: nextMap, shifts, pinCode });
+    setNewStaffInput("");
+  };
+
+  const removeStaff = (name) => {
+    const currentShiftStaff = staffMap[shift] || [];
+    const nextMap = { ...staffMap, [shift]: currentShiftStaff.filter((s) => s !== name) };
+    persist({ tasks, violations, areas, staffMap: nextMap, shifts, pinCode });
+  };
+
+  const addShift = () => {
+    const name = newShiftInput.trim();
+    if (!name || shifts.includes(name)) return;
+    const nextShifts = [...shifts, name];
+    const nextMap = { ...staffMap, [name]: [] };
+    persist({ tasks, violations, areas, staffMap: nextMap, shifts: nextShifts, pinCode: pinCode });
+    setNewShiftInput("");
+  };
+
+  const removeShift = (name) => {
+    if (shifts.length <= 1) return;
+    const nextShifts = shifts.filter((s) => s !== name);
+    const nextMap = { ...staffMap };
+    delete nextMap[name];
+    persist({ tasks, violations, areas, staffMap: nextMap, shifts: nextShifts, pinCode: pinCode });
+    if (shift === name) setShift(nextShifts[0]);
+  };
+
+  const visibleTasks = tasks
+    .filter((t) => t.shift === shift)
+    .filter((t) => mode === "manager" ? true : (t.assignee === EVERYONE || t.assignee === myName))
+    .sort((a, b) => a.createdAt - b.createdAt);
+
+  const visibleViolations = violations
+    .filter((v) => v.shift === shift)
+    .filter((v) => mode === "manager" ? true : (v.assignee === myName))
+    .sort((a, b) => a.createdAt - b.createdAt);
+
+  const shiftTasksAll = mode === "manager"
+    ? tasks.filter((t) => t.shift === shift)
+    : tasks.filter((t) => t.shift === shift && (t.assignee === EVERYONE || t.assignee === myName));
+  const doneCount = shiftTasksAll.filter((t) => t.done).length;
+  const totalCount = shiftTasksAll.length;
+
+  const shiftViolationsAll = mode === "manager"
+    ? violations.filter((v) => v.shift === shift)
+    : violations.filter((v) => v.shift === shift && v.assignee === myName);
+  const confirmedViolationCount = shiftViolationsAll.filter((v) => v.confirmed).length;
+  const totalViolationCount = shiftViolationsAll.length;
+
+  const currentShiftStaff = staffMap[shift] || [];
+  const formShiftStaff = staffMap[fShift] || [];
+  const violationFormShiftStaff = staffMap[vShift] || [];
+
+  if (loadError) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.emptyState}>Chưa kết nối được kho dữ liệu. Vui lòng kiểm tra lại kết nối mạng hoặc server.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.page}>
+      {showPinModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3 style={{ margin: "0 0 10px", color: THEME.primary }}>XÁC NHẬN QUẢN LÝ</h3>
+            <p style={{ fontSize: 13, color: THEME.textMuted, margin: "0 0 14px" }}>
+              Nhập mã PIN để truy cập phần Quản lý
+            </p>
+            <input
+              type="password"
+              value={inputPin}
+              onChange={(e) => setInputPin(e.target.value)}
+              placeholder="Nhập mã PIN..."
+              style={styles.inputModal}
+              onKeyDown={(e) => e.key === "Enter" && handleVerifyPin()}
+              autoFocus
+            />
+            {pinError && <div style={styles.errorText}>{pinError}</div>}
+            <div style={styles.modalActions}>
+              <button style={styles.cancelBtn} onClick={() => setShowPinModal(false)}>Hủy</button>
+              <button style={styles.confirmBtn} onClick={handleVerifyPin}>Xác nhận</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailModalViolation && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3 style={{ margin: "0 0 8px", color: THEME.danger, fontSize: 15, fontFamily: "'IBM Plex Mono', monospace" }}>CHI TIẾT LỖI VI PHẠM</h3>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+              <span style={styles.violationBadge}>VI PHẠM</span>
+              <span style={styles.assigneeBadgeRed}>{detailModalViolation.assignee}</span>
+              {detailModalViolation.penalty && <span style={styles.penaltyBadge}>Hình thức: {detailModalViolation.penalty}</span>}
+            </div>
+            <div style={styles.modalDetailTextBox}>
+              {detailModalViolation.text}
+            </div>
+            {detailModalViolation.image && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: THEME.textMuted, marginBottom: 6 }}>Hình ảnh đính kèm:</div>
+                <img 
+                  src={detailModalViolation.image} 
+                  alt="Vi phạm" 
+                  style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 6, border: `1px solid ${THEME.border}`, cursor: "pointer" }}
+                  onClick={() => setPreviewImageModal(detailModalViolation.image)}
+                />
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              <button style={styles.confirmBtn} onClick={() => setDetailModalViolation(null)}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewImageModal && (
+        <div style={styles.modalOverlay} onClick={() => setPreviewImageModal(null)}>
+          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "90%" }} onClick={(e) => e.stopPropagation()}>
+            <img src={previewImageModal} alt="Phóng to" style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8 }} />
+            <button style={{ position: "absolute", top: -10, right: -10, background: THEME.danger, color: "#fff", border: "none", borderRadius: "50%", width: 30, height: 30, fontSize: 14, fontWeight: 700, cursor: "pointer" }} onClick={() => setPreviewImageModal(null)}>✕</button>
+          </div>
+        </div>
+      )}
+
+      {loaded && pickingName && mode === "staff" ? (
+        <div style={styles.namePicker}>
+          <h1 style={styles.title}>ZEN WORK</h1>
+          <div style={styles.subtitle}>TRẢNG BOM II</div>
+          <p style={styles.nameSub}>Chọn tên để xem đúng việc và lỗi vi phạm được giao cho bạn.</p>
+          
+          {shifts.map(s => {
+            const list = staffMap[s] || [];
+            if (list.length === 0) return null;
+            return (
+              <div key={s} style={{ marginBottom: 20 }}>
+                <div style={styles.shiftGroupTitle}>NHÂN VIÊN CA {s.toUpperCase()}</div>
+                <div style={styles.nameGrid}>
+                  {list.map((name) => (
+                    <button key={`${s}-${name}`} style={styles.nameBtn} onClick={() => chooseMyName(name)}>{name}</button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <button style={styles.switchToManagerBtn} onClick={requestManagerMode}>Tôi là quản lý →</button>
+        </div>
+      ) : (
+        <>
+          <div style={styles.header}>
+            <div>
+              <h1 style={styles.title}>ZEN WORK</h1>
+              <div style={styles.subtitle}>TRẢNG BOM II</div>
+            </div>
+            <div style={styles.modeToggle}>
+              <button onClick={() => setMode("staff")} style={{...styles.modeBtn, ...(mode === "staff" ? styles.modeBtnActive : {})}}>Nhân viên</button>
+              <button onClick={requestManagerMode} style={{...styles.modeBtn, ...(mode === "manager" ? styles.modeBtnActive : {})}}>Quản lý</button>
+            </div>
+          </div>
+
+          {mode === "staff" && myName && (
+            <div style={styles.whoRow}>
+              <span>Xin chào, <b style={{color: THEME.primary}}>{myName}</b></span>
+              <button style={styles.switchNameBtn} onClick={() => setPickingName(true)}>Đổi tên</button>
+            </div>
+          )}
+
+          <div style={styles.rail}>
+            {shifts.map((s) => {
+              const count = mode === "manager"
+                ? tasks.filter((t) => t.shift === s)
+                : tasks.filter((t) => t.shift === s && (t.assignee === EVERYONE || t.assignee === myName));
+              const done = count.filter((t) => t.done).length;
+              return (
+                <button key={s} className="rail-tab" onClick={() => setShift(s)}
+                  style={{...styles.railTab, ...(shift === s ? styles.railTabActive : {})}}>
+                  <span style={styles.railTabLabel}>{s}</span>
+                  <span style={styles.railTabCount}>{count.length ? `${done}/${count.length}` : "—"}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={styles.progressWrap}>
+            <div style={styles.progressText}>Ca {shift.toLowerCase()} · {doneCount}/{totalCount || 0} việc xong</div>
+            <div style={styles.progressBarBg}>
+              <div style={{...styles.progressBarFill, width: totalCount ? `${(doneCount/totalCount)*100}%` : "0%"}} />
+            </div>
+          </div>
+
+          {mode === "manager" && (
+            <div style={styles.managerBar}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: THEME.primary }}>CẤU HÌNH QUẢN LÝ</span>
+                <button style={styles.switchNameBtn} onClick={() => setShowChangePin(!showChangePin)}>Đổi mã PIN</button>
+              </div>
+
+              {showChangePin && (
+                <div style={styles.changePinBox}>
+                  <input type="password" placeholder="Mã PIN mới..." value={newPinInput} onChange={(e) => setNewPinInput(e.target.value)} style={styles.inputSmall} />
+                  <button style={styles.smallBtn} onClick={handleChangePin}>Lưu PIN</button>
+                </div>
+              )}
+
+              <div style={styles.addAreaRow}>
+                <input value={newShiftInput} onChange={(e) => setNewShiftInput(e.target.value)}
+                  placeholder="Thêm ca làm mới..." style={styles.inputSmall}
+                  onKeyDown={(e) => e.key === "Enter" && addShift()} />
+                <button style={styles.smallBtn} onClick={addShift}>+ Ca làm</button>
+              </div>
+              {shifts.length > 0 && (
+                <div style={styles.staffChipsRow}>
+                  {shifts.map((s) => (
+                    <span key={s} style={styles.staffChip}>
+                      Ca {s}
+                      {shifts.length > 1 && <button style={styles.staffChipX} onClick={() => removeShift(s)}>✕</button>}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div style={styles.addAreaRow}>
+                <input value={newStaffInput} onChange={(e) => setNewStaffInput(e.target.value)}
+                  placeholder={`Thêm nhân viên ca ${shift.toLowerCase()}...`} style={styles.inputSmall}
+                  onKeyDown={(e) => e.key === "Enter" && addStaff()} />
+                <button style={styles.smallBtn} onClick={addStaff}>+ Nhân viên</button>
+              </div>
+              {currentShiftStaff.length > 0 ? (
+                <div style={styles.staffChipsRow}>
+                  {currentShiftStaff.map((s) => (
+                    <span key={s} style={styles.staffChip}>
+                      {s}
+                      <button style={styles.staffChipX} onClick={() => removeStaff(s)}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.noStaffHint}>Chưa có nhân viên nào trong Ca {shift}.</div>
+              )}
+
+              <div style={styles.addAreaRow}>
+                <input value={newAreaInput} onChange={(e) => setNewAreaInput(e.target.value)}
+                  placeholder="Thêm khu vực mới…" style={styles.inputSmall}
+                  onKeyDown={(e) => e.key === "Enter" && addArea()} />
+                <button style={styles.smallBtn} onClick={addArea}>+ Khu vực</button>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <button style={{...styles.addTaskBtn, flex: 1}} onClick={() => { setFormOpen(v => !v); setFShift(shift); }}>
+                  {formOpen ? "Đóng Giao việc" : "+ Giao việc mới"}
+                </button>
+                <button style={{...styles.addViolationBtn, flex: 1}} onClick={() => { setViolationFormOpen(v => !v); setVShift(shift); if(currentShiftStaff.length > 0) setVAssignee(currentShiftStaff[0]); }}>
+                  {violationFormOpen ? "Đóng Vi phạm" : "+ Ghi nhận vi phạm"}
+                </button>
+              </div>
+
+              {formOpen && (
+                <div style={styles.form}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: THEME.primary, marginBottom: 2 }}>GIAO CÔNG VIỆC</div>
+                  <textarea value={fText} onChange={(e) => setFText(e.target.value)}
+                    placeholder="Nội dung công việc..." style={styles.textarea} rows={2} />
+                  <div style={styles.formRow}>
+                    <select value={fShift} onChange={(e) => {
+                      const ns = e.target.value;
+                      setFShift(ns);
+                      const staffList = staffMap[ns] || [];
+                      if (fAssignee !== EVERYONE && !staffList.includes(fAssignee)) {
+                        setFAssignee(EVERYONE);
+                      }
+                    }} style={styles.select}>
+                      {shifts.map((s) => <option key={s} value={s}>Ca {s.toLowerCase()}</option>)}
+                    </select>
+                    <select value={fArea} onChange={(e) => setFArea(e.target.value)} style={styles.select}>
+                      {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </div>
+                  <div style={styles.formRow}>
+                    <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} style={styles.select}>
+                      <option value={EVERYONE}>Giao cho: Cả ca</option>
+                      {formShiftStaff.map((s) => <option key={s} value={s}>Giao cho: {s}</option>)}
+                    </select>
+                    <input value={fTime} onChange={(e) => setFTime(e.target.value)} placeholder="Giờ (VD: 14:30)" style={styles.inputSmall} />
+                  </div>
+                  <button style={styles.submitBtn} onClick={addTask}>Ghim vào bảng công việc</button>
+                </div>
+              )}
+
+              {violationFormOpen && (
+                <div style={{...styles.form, borderColor: THEME.danger, background: "#FFF5F5"}}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: THEME.danger, marginBottom: 2 }}>GHI NHẬN LỖI VI PHẠM</div>
+                  <textarea value={vText} onChange={(e) => setVText(e.target.value)}
+                    placeholder="Nội dung lỗi vi phạm..." style={{...styles.textarea, borderColor: "#F5C6CB"}} rows={2} />
+                  <div style={styles.formRow}>
+                    <select value={vShift} onChange={(e) => {
+                      const ns = e.target.value;
+                      setVShift(ns);
+                      const staffList = staffMap[ns] || [];
+                      if (!staffList.includes(vAssignee)) {
+                        setVAssignee(staffList[0] || "");
+                      }
+                    }} style={styles.select}>
+                      {shifts.map((s) => <option key={s} value={s}>Ca {s.toLowerCase()}</option>)}
+                    </select>
+                    <select value={vAssignee} onChange={(e) => setVAssignee(e.target.value)} style={styles.select}>
+                      {violationFormShiftStaff.length === 0 ? (
+                        <option value="">Không có nhân viên trong ca</option>
+                      ) : (
+                        violationFormShiftStaff.map((s) => <option key={s} value={s}>Nhân viên: {s}</option>)
+                      )}
+                    </select>
+                  </div>
+                  <div style={styles.formRow}>
+                    <input value={vPenalty} onChange={(e) => setVPenalty(e.target.value)} placeholder="Hình thức xử lý (VD: Phạt 100k, Nhắc nhở...)" style={{...styles.inputSmall, flex: 1}} />
+                  </div>
+                  
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+                    <label style={styles.uploadBtnLabel}>
+                      📷 Đính kèm hình ảnh
+                      <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
+                    </label>
+                    {vImage && <span style={{ fontSize: 12, color: THEME.success, fontWeight: 600 }}>✓ Đã chọn 1 ảnh</span>}
+                  </div>
+                  {vImage && (
+                    <div style={{ position: "relative", width: 80, height: 80, marginTop: 4 }}>
+                      <img src={vImage} alt="Preview" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 6, border: `1px solid ${THEME.border}` }} />
+                      <button style={{ position: "absolute", top: -6, right: -6, background: THEME.danger, color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer" }} onClick={() => setVImage("")}>✕</button>
+                    </div>
+                  )}
+
+                  <button style={styles.submitViolationBtn} onClick={addViolation}>Gửi lỗi vi phạm cho nhân viên</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* KHU VỰC HIỂN THỊ VI PHẠM (XÁC NHẬN LỖI) */}
+          {(visibleViolations.length > 0 || mode === "manager") && (
+            <div style={styles.sectionContainer}>
+              <div style={styles.sectionHeader}>
+                <span style={styles.sectionTitleRed}>⚠️ XÁC NHẬN LỖI VI PHẠM ({confirmedViolationCount}/{totalViolationCount})</span>
+              </div>
+              <div style={styles.ticketList}>
+                {visibleViolations.length === 0 && (
+                  <div style={styles.emptyState}>
+                    {mode === "manager" ? `Chưa có lỗi vi phạm nào trong ca ${shift.toLowerCase()}.` : `Bạn không có lỗi vi phạm nào cần xác nhận trong ca ${shift.toLowerCase()}.`}
+                  </div>
+                )}
+                {visibleViolations.map((v) => (
+                  <div key={v.id} className="ticket" style={{...styles.violationTicket, ...(v.confirmed ? styles.ticketDone : {})}}>
+                    <div style={styles.violationCardInner}>
+                      <button onClick={() => toggleViolationConfirm(v.id)} style={styles.checkZoneViolation}>
+                        <span style={{...styles.checkbox, borderColor: THEME.danger, ...(v.confirmed ? styles.violationCheckboxDone : {})}}>
+                          {v.confirmed ? "✓" : ""}
+                        </span>
+                      </button>
+
+                      <div style={styles.ticketBody}>
+                        <div style={styles.ticketTop}>
+                          <div style={styles.badgeGroup}>
+                            <span style={styles.violationBadge}>VI PHẠM</span>
+                            <span style={styles.assigneeBadgeRed}>{v.assignee}</span>
+                          </div>
+                          {v.penalty && <span style={styles.penaltyBadge}>Hình thức: {v.penalty}</span>}
+                        </div>
+
+                        <div style={{...styles.ticketTextClamp, ...(v.confirmed ? styles.ticketTextDone : {})}}>{v.text}</div>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 4 }}>
+                          <button onClick={() => setDetailModalViolation(v)} style={styles.detailBtn}>Xem chi tiết</button>
+                          {v.image && <span style={{ fontSize: 11, color: THEME.primary, fontWeight: 600 }}>📷 Có hình ảnh đính kèm</span>}
+                        </div>
+
+                        {v.confirmed && v.confirmedBy && (
+                          <div style={styles.doneByRow}>
+                            <span style={styles.confirmedByBadge}>✓ Đã xác nhận bởi {v.confirmedBy}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {violationStampId === v.id && <div className="stamp" style={{...styles.stamp, borderColor: THEME.danger, color: THEME.danger}}>ĐÃ XÁC NHẬN</div>}
+                    {mode === "manager" && <button onClick={() => deleteViolation(v.id)} style={styles.deleteBtn}>✕</button>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* KHU VỰC HIỂN THỊ CÔNG VIỆC */}
+          <div style={styles.sectionContainer}>
+            <div style={styles.sectionHeader}>
+              <span style={styles.sectionTitleGreen}>📋 DANH SÁCH CÔNG VIỆC</span>
+            </div>
+            <div style={styles.ticketList}>
+              {!loaded && <div style={styles.emptyState}>Đang tải bảng ca…</div>}
+              {loaded && visibleTasks.length === 0 && (
+                <div style={styles.emptyState}>
+                  {mode === "manager" ? `Chưa có việc nào cho ca ${shift.toLowerCase()}.` : `Bạn chưa có việc nào trong ca ${shift.toLowerCase()}.`}
+                </div>
+              )}
+              {visibleTasks.map((t) => (
+                <div key={t.id} className="ticket" style={{...styles.ticket, ...(t.done ? styles.ticketDone : {})}}>
+                  <button onClick={() => toggleDone(t.id)} style={styles.checkZone}>
+                    <span style={{...styles.checkbox, ...(t.done ? styles.checkboxDone : {})}}>
+                      {t.done ? "✓" : ""}
+                    </span>
+
+                    <div style={styles.ticketBody}>
+                      <div style={styles.ticketTop}>
+                        <div style={styles.badgeGroup}>
+                          <span style={styles.ticketAreaBadge}>{t.area}</span>
+                          <span style={styles.assigneeBadge}>{t.assignee}</span>
+                        </div>
+                        {t.time && <span style={styles.ticketTime}>{t.time}</span>}
+                      </div>
+
+                      <div style={{...styles.ticketText, ...(t.done ? styles.ticketTextDone : {})}}>{t.text}</div>
+
+                      {t.done && t.doneBy && (
+                        <div style={styles.doneByRow}>
+                          <span style={styles.doneByBadge}>✓ Hoàn thành bởi {t.doneBy}</span>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  {stampId === t.id && <div className="stamp" style={styles.stamp}>XONG</div>}
+                  {mode === "manager" && <button onClick={() => deleteTask(t.id)} style={styles.deleteBtn}>✕</button>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  page: { minHeight: "100vh", background: THEME.bgPage, color: THEME.textDark, fontFamily: "'Inter', sans-serif", padding: "20px 16px 60px", maxWidth: 640, margin: "0 auto" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14, flexWrap: "wrap", gap: 10 },
+  title: { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13.5, fontWeight: 400, letterSpacing: "0.15em", margin: 0, color: THEME.primary, textTransform: "uppercase", lineHeight: 1 },
+  subtitle: { fontFamily: "'Oswald', sans-serif", fontSize: 26, fontWeight: 700, color: THEME.textDark, letterSpacing: "0.03em", marginTop: 4, textTransform: "uppercase" },
+  modeToggle: { display: "flex", background: "#C8E6C9", borderRadius: 8, padding: 3, gap: 3 },
+  modeBtn: { border: "none", background: "transparent", color: THEME.textMuted, fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, padding: "7px 12px", borderRadius: 6, cursor: "pointer" },
+  modeBtnActive: { background: THEME.primary, color: "#FFFFFF" },
+  whoRow: { display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: THEME.textMuted, marginBottom: 12 },
+  switchNameBtn: { background: "transparent", border: `1px solid ${THEME.border}`, color: THEME.textMuted, borderRadius: 6, padding: "4px 9px", fontSize: 12, cursor: "pointer" },
+  rail: { display: "flex", gap: 8, background: THEME.bgCard, padding: 8, borderRadius: 10, marginBottom: 14, overflowX: "auto", border: `1px solid ${THEME.border}` },
+  railTab: { flex: 1, minWidth: 80, border: "none", background: "transparent", color: THEME.textLight, cursor: "pointer", padding: "10px 6px", borderRadius: 7, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 },
+  railTabActive: { background: THEME.accentSoft, color: THEME.textDark, boxShadow: `inset 0 0 0 1.5px ${THEME.primary}` },
+  railTabLabel: { fontFamily: "'Oswald', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: "0.03em" },
+  railTabCount: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, opacity: 0.8 },
+  progressWrap: { marginBottom: 16 },
+  progressText: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: THEME.textMuted, marginBottom: 6 },
+  progressBarBg: { height: 6, background: "#C8E6C9", borderRadius: 4, overflow: "hidden" },
+  progressBarFill: { height: "100%", background: THEME.success, borderRadius: 4, transition: "width .3s ease" },
+  managerBar: { background: THEME.bgCard, borderRadius: 10, padding: 12, marginBottom: 16, border: `1px solid ${THEME.border}` },
+  changePinBox: { display: "flex", gap: 8, marginBottom: 12, background: THEME.bgPage, padding: 8, borderRadius: 8 },
+  addAreaRow: { display: "flex", gap: 8, marginBottom: 10 },
+  staffChipsRow: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  noStaffHint: { fontSize: 12, color: THEME.textLight, fontStyle: "italic", marginBottom: 12, paddingLeft: 2 },
+  staffChip: { display: "flex", alignItems: "center", gap: 6, background: THEME.accentSoft, border: `1px solid ${THEME.border}`, borderRadius: 999, padding: "4px 6px 4px 12px", fontSize: 12.5, color: THEME.textDark, fontFamily: "'Inter', sans-serif" },
+  staffChipX: { background: "transparent", border: "none", color: THEME.danger, cursor: "pointer", fontSize: 11, padding: 2 },
+  inputSmall: { flex: 1, background: THEME.bgPage, border: `1px solid ${THEME.border}`, borderRadius: 7, padding: "8px 10px", color: THEME.textDark, fontSize: 13, fontFamily: "'Inter', sans-serif" },
+  smallBtn: { background: THEME.primary, color: "#FFFFFF", border: "none", borderRadius: 7, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
+  addTaskBtn: { width: "100%", background: THEME.primary, color: "#FFFFFF", border: "none", borderRadius: 7, padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" },
+  addViolationBtn: { width: "100%", background: THEME.danger, color: "#FFFFFF", border: "none", borderRadius: 7, padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" },
+  form: { marginTop: 12, display: "flex", flexDirection: "column", gap: 8, background: THEME.bgPage, padding: 10, borderRadius: 8, border: `1px solid ${THEME.border}` },
+  textarea: { width: "100%", background: "#FFFFFF", border: `1px solid ${THEME.border}`, borderRadius: 7, padding: 10, color: THEME.textDark, fontSize: 13.5, fontFamily: "'Inter', sans-serif", resize: "vertical" },
+  formRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+  select: { flex: "1 1 120px", background: "#FFFFFF", border: `1px solid ${THEME.border}`, borderRadius: 7, padding: "8px 8px", color: THEME.textDark, fontSize: 13 },
+  submitBtn: { background: THEME.success, color: "#FFFFFF", border: "none", borderRadius: 7, padding: "10px 12px", fontSize: 13.5, fontWeight: 700, cursor: "pointer" },
+  submitViolationBtn: { background: THEME.danger, color: "#FFFFFF", border: "none", borderRadius: 7, padding: "10px 12px", fontSize: 13.5, fontWeight: 700, cursor: "pointer" },
+  uploadBtnLabel: { display: "inline-block", background: "#FFFFFF", border: `1px solid ${THEME.border}`, borderRadius: 7, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, color: THEME.textMuted, cursor: "pointer" },
+  sectionContainer: { marginTop: 16 },
+  sectionHeader: { marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" },
+  sectionTitleGreen: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, color: THEME.primary, letterSpacing: "0.05em" },
+  sectionTitleRed: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, color: THEME.danger, letterSpacing: "0.05em" },
+  ticketList: { display: "flex", flexDirection: "column", gap: 10 },
+  emptyState: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: THEME.textMuted, padding: "20px 10px", textAlign: "center", border: `1px dashed ${THEME.border}`, borderRadius: 10, background: THEME.bgCard },
+  ticket: { position: "relative", background: THEME.ticketBg, border: `1px solid ${THEME.border}`, borderRadius: 8, boxShadow: "0 2px 6px rgba(27, 67, 50, 0.05)", overflow: "hidden" },
+  violationTicket: { position: "relative", background: THEME.ticketBg, border: `1px solid #F5C6CB`, borderRadius: 8, boxShadow: "0 2px 6px rgba(230, 57, 70, 0.05)", overflow: "hidden" },
+  ticketDone: { opacity: 0.65, background: "#F1F8E9" },
+  violationCardInner: { display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px" },
+  checkZone: { width: "100%", display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" },
+  checkZoneViolation: { background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 },
+  checkbox: { flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: `2px solid ${THEME.primary}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontWeight: 700, fontSize: 13, transition: "all .15s ease" },
+  checkboxDone: { background: THEME.success, borderColor: THEME.success },
+  violationCheckboxDone: { background: THEME.danger, borderColor: THEME.danger },
+  ticketBody: { flex: 1, minWidth: 0 },
+  ticketTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+  badgeGroup: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  ticketAreaBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: THEME.primary, background: THEME.accentSoft, padding: "3px 8px", borderRadius: 4, display: "inline-block" },
+  violationBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#FFFFFF", background: THEME.danger, padding: "3px 8px", borderRadius: 4, display: "inline-block" },
+  assigneeBadge: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600, color: THEME.primary, background: "#C8E6C9", padding: "2px 8px", borderRadius: 12, border: `1px solid ${THEME.border}`, display: "inline-block" },
+  assigneeBadgeRed: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600, color: THEME.danger, background: "#F8D7DA", padding: "2px 8px", borderRadius: 12, border: `1px solid #F5C6CB`, display: "inline-block" },
+  ticketTime: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: THEME.danger, fontWeight: 600 },
+  penaltyBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: THEME.danger, fontWeight: 600, background: "#FFF3CD", padding: "2px 6px", borderRadius: 4 },
+  ticketText: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, color: THEME.textDark, lineHeight: 1.4, marginBottom: 4 },
+  ticketTextClamp: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, color: THEME.textDark, lineHeight: 1.4, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis" },
+  ticketTextDone: { textDecoration: "line-through", color: THEME.textMuted },
+  detailBtn: { background: "transparent", border: "none", color: THEME.danger, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0, textDecoration: "underline", display: "inline-block" },
+  doneByRow: { marginTop: 6 },
+  doneByBadge: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 600, color: "#FFFFFF", background: THEME.success, padding: "2px 7px", borderRadius: 10, display: "inline-block" },
+  confirmedByBadge: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 600, color: "#FFFFFF", background: THEME.danger, padding: "2px 7px", borderRadius: 10, display: "inline-block" },
+  deleteBtn: { position: "absolute", top: 6, right: 6, background: "transparent", border: "none", color: THEME.danger, fontSize: 13, cursor: "pointer", padding: 4 },
+  stamp: { position: "absolute", top: "50%", right: 16, transform: "translateY(-50%) rotate(-12deg)", border: `3px solid ${THEME.success}`, color: THEME.success, fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: 18, letterSpacing: "0.08em", padding: "3px 10px", borderRadius: 4, background: "rgba(255,255,255,0.92)", pointerEvents: "none" },
+  namePicker: { paddingTop: 40 },
+  nameSub: { fontFamily: "'Inter', sans-serif", fontSize: 13.5, color: THEME.textMuted, marginTop: 12, marginBottom: 20 },
+  shiftGroupTitle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: THEME.primary, letterSpacing: "0.08em", marginBottom: 8 },
+  nameGrid: { display: "flex", flexWrap: "wrap", gap: 10 },
+  nameBtn: { background: THEME.bgCard, color: THEME.textDark, border: `1px solid ${THEME.border}`, borderRadius: 8, padding: "12px 18px", fontSize: 14, fontWeight: 600, fontFamily: "'Oswald', sans-serif", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.04)" },
+  switchToManagerBtn: { marginTop: 20, background: "transparent", border: `1px solid ${THEME.border}`, color: THEME.textMuted, borderRadius: 7, padding: "9px 14px", fontSize: 13, cursor: "pointer" },
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999, padding: 16 },
+  modalContent: { background: THEME.bgCard, padding: 20, borderRadius: 10, width: "100%", maxWidth: 380, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" },
+  modalDetailTextBox: { background: THEME.bgPage, border: `1px solid #F5C6CB`, borderRadius: 8, padding: 12, fontSize: 14, fontFamily: "'IBM Plex Mono', monospace", color: THEME.textDark, maxHeight: 240, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all" },
+  inputModal: { width: "100%", background: THEME.bgPage, border: `1px solid ${THEME.border}`, borderRadius: 7, padding: "10px 12px", fontSize: 14, marginBottom: 8 },
+  modalActions: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 },
+  cancelBtn: { background: "transparent", border: `1px solid ${THEME.border}`, borderRadius: 6, padding: "7px 12px", cursor: "pointer", fontSize: 13, color: THEME.textMuted },
+  confirmBtn: { background: THEME.primary, color: "#FFFFFF", border: "none", borderRadius: 6, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600 },
+  errorText: { color: THEME.danger, fontSize: 12, marginTop: 4 }
+};
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
