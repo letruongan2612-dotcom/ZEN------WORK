@@ -60,7 +60,7 @@ function App() {
   const [vPenalty, setVPenalty] = useState("");
   const [vAssignee, setVAssignee] = useState("");
   const [vShift, setVShift] = useState("Sáng");
-  const [vImage, setVImage] = useState(""); // Lưu base64 ảnh vi phạm
+  const [vImage, setVImage] = useState("");
 
   // Detail Modal State
   const [selectedViolation, setSelectedViolation] = useState(null);
@@ -144,7 +144,6 @@ function App() {
 
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-  // Xử lý nén/đọc file ảnh vi phạm sang Base64
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -228,12 +227,19 @@ function App() {
     );
   }
 
+  // PHÂN QUYỀN HIỂN THỊ VI PHẠM:
+  // - Quản lý xem tất cả.
+  // - Nhân viên thường chỉ xem được vi phạm của chính mình VÀ phải thuộc đúng ca đang chọn.
   const visibleViolations = mode === 'manager' 
     ? violations 
-    : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase());
+    : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase() && v.shift === shift);
+
+  // PHÂN QUYỀN HIỂN THỊ CÔNG VIỆC:
+  // - Quản lý xem tất cả theo ca đang chọn.
+  // - Nhân viên thường chỉ xem được công việc của ca đang chọn (không thấy việc của ca kia).
+  const visibleTasks = tasks.filter(t => t.shift === shift);
 
   return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', paddingBottom: 60 } },
-    /* HEADER: Chỉ hiển thị tên nhân viên khi ở trang nhân viên, ẩn đi khi ở chế độ Quản lý */
     React.createElement('header', { style: { background: '#1B4332', color: '#fff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' } },
       React.createElement('div', null,
         React.createElement('h1', { style: { margin: 0, fontSize: 18, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 } }, "ZEN WORK · TRẢNG BOM II"),
@@ -259,7 +265,6 @@ function App() {
       )
     ),
 
-    /* PHẦN QUẢN LÝ NHÂN VIÊN (Hiển thị riêng khi ở chế độ Quản lý) */
     mode === 'manager' && React.createElement('div', { style: { background: '#E8F5E9', padding: '12px 16px', borderBottom: '1px solid #C8E6C9' } },
       React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#1B4332', marginBottom: 6 } }, `👥 Quản lý nhân sự Ca ${shift}`),
       React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 } },
@@ -307,7 +312,6 @@ function App() {
       )
     ),
 
-    /* THANH CHỌN CA & THAO TÁC */
     React.createElement('div', { style: { background: '#fff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E8E1' } },
       React.createElement('div', { style: { display: 'flex', gap: 6 } },
         shifts.map(s =>
@@ -333,18 +337,16 @@ function App() {
       }, "+ Giao việc")
     ),
 
-    /* NỘI DUNG CHÍNH */
     React.createElement('div', { style: { padding: 16 } },
-      /* DANH SÁCH CÔNG VIỆC */
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 } },
         React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', margin: 0, fontWeight: 700 } }, `Danh sách việc cần làm (Ca ${shift})`),
         mode === 'manager' && React.createElement('span', { style: { fontSize: 11, background: '#E8F5E9', color: '#2D6A4F', padding: '2px 8px', borderRadius: 4, fontWeight: 600 } }, "Chế độ Quản lý")
       ),
 
-      tasks.filter(t => t.shift === shift).length === 0 ?
+      visibleTasks.length === 0 ?
         React.createElement('div', { style: { background: '#fff', padding: 28, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9', fontSize: 13 } }, "Chưa có công việc nào trong ca này.") :
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
-          tasks.filter(t => t.shift === shift).map(t => {
+          visibleTasks.map(t => {
             const isDone = t.status === 'done';
             return React.createElement('div', {
               key: t.id,
@@ -412,13 +414,12 @@ function App() {
           })
         ),
 
-      /* PHẦN BIÊN BẢN / VI PHẠM */
       React.createElement('div', { style: { marginTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
         React.createElement('div', null,
           React.createElement('h3', { style: { fontSize: 15, color: '#1B4332', margin: 0, fontWeight: 700 } }, 
-            mode === 'manager' ? "Tất cả Biên bản / Vi phạm" : "Biên bản / Vi phạm của bạn"
+            mode === 'manager' ? "Tất cả Biên bản / Vi phạm" : `Biên bản / Vi phạm của bạn (Ca ${shift})`
           ),
-          mode === 'staff' && React.createElement('div', { style: { fontSize: 11, color: '#666', marginTop: 1 } }, "Chỉ hiển thị lỗi của riêng bạn để bảo mật")
+          mode === 'staff' && React.createElement('div', { style: { fontSize: 11, color: '#666', marginTop: 1 } }, "Chỉ hiển thị lỗi của riêng bạn trong ca này để bảo mật")
         ),
         mode === 'manager' && React.createElement('button', {
           onClick: () => setViolationFormOpen(true),
@@ -428,7 +429,7 @@ function App() {
 
       visibleViolations.length === 0 ?
         React.createElement('div', { style: { background: '#fff', padding: 20, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', marginTop: 8, border: '1px dashed #C8E6C9', fontSize: 13 } }, 
-          mode === 'manager' ? "Không có biên bản vi phạm nào." : "Tuyệt vời! Bạn không có vi phạm nào trong hệ thống."
+          mode === 'manager' ? "Không có biên bản vi phạm nào." : "Tuyệt vời! Bạn không có vi phạm nào trong ca này."
         ) :
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 } },
           visibleViolations.map(v => {
@@ -500,7 +501,6 @@ function App() {
         )
     ),
 
-    /* MODAL XEM CHI TIẾT BIÊN BẢN (Kèm hiển thị ảnh bằng chứng) */
     selectedViolation && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 } },
       React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: '90%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' } },
         React.createElement('h3', { style: { color: '#C62828', marginTop: 0, marginBottom: 12 } }, "Chi tiết Biên bản Vi phạm"),
@@ -537,7 +537,6 @@ function App() {
       )
     ),
 
-    /* MODAL NHẬP PIN QUẢN LÝ */
     showPinModal && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
       React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.15)', textAlign: 'center' } },
         React.createElement('h3', { style: { color: '#1B4332', marginTop: 0 } }, "Mã PIN Quản lý"),
@@ -599,7 +598,6 @@ function App() {
       )
     ),
 
-    /* MODAL GIAO VIỆC */
     formOpen && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
       React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 360, boxShadow: '0 8px 30px rgba(0,0,0,0.15)' } },
         React.createElement('h3', { style: { color: '#1B4332', marginTop: 0 } }, "Giao công việc mới"),
@@ -682,7 +680,6 @@ function App() {
       )
     ),
 
-    /* MODAL THÊM VI PHẠM (Chỉ giữ một ô chọn nhân viên duy nhất) */
     violationFormOpen && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
       React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 380, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.15)' } },
         React.createElement('h3', { style: { color: '#C62828', marginTop: 0 } }, "Thêm biên bản vi phạm"),
@@ -693,7 +690,7 @@ function App() {
               value: vShift,
               onChange: e => {
                 setVShift(e.target.value);
-                setVAssignee(''); // Reset tên khi đổi ca
+                setVAssignee('');
               },
               style: { width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 13 }
             }, shifts.map(s => React.createElement('option', { key: s, value: s }, `Ca ${s}`)))
