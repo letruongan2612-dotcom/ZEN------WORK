@@ -49,6 +49,7 @@ function App() {
   const [myName, setMyName] = useState(localStorage.getItem("pr-my-name") || "");
   const [pickingName, setPickingName] = useState(!localStorage.getItem("pr-my-name"));
 
+  // State ẩn/hiện danh sách nhân sự trong chế độ quản lý (mặc định mở luôn hoặc bấm tiêu đề để thu gọn)
   const [showStaffManager, setShowStaffManager] = useState(true);
 
   // Form states
@@ -66,14 +67,17 @@ function App() {
   const [vShift, setVShift] = useState("Sáng");
   const [vImage, setVImage] = useState("");
 
+  // Detail Modal State
   const [selectedViolation, setSelectedViolation] = useState(null);
 
+  // Modals & UI states
   const [showPinModal, setShowPinModal] = useState(false);
   const [inputPin, setInputPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [showChangePin, setShowChangePin] = useState(false);
   const [newPinInput, setNewPinInput] = useState("");
 
+  // Quản lý nhân viên trong chế độ QL
   const [newStaffName, setNewStaffName] = useState("");
 
   const fetchData = async () => {
@@ -183,7 +187,8 @@ function App() {
   if (pickingName) {
     const currentStaffList = staffMap[shift] || [];
     return React.createElement('div', { style: { maxWidth: 420, margin: '60px auto', padding: 28, background: '#fff', borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.06)', textAlign: 'center' } },
-      React.createElement('div', { style: { fontSize: 24, fontWeight: 700, color: '#1B4332', fontFamily: "'Oswald', sans-serif", letterSpacing: 1, marginBottom: 12 } }, "ZEN WORK"),
+      React.createElement('div', { style: { fontSize: 24, fontWeight: 700, color: '#1B4332', fontFamily: "'Oswald', sans-serif", letterSpacing: 1 } }, "ZEN WORK"),
+      React.createElement('div', { style: { fontSize: 13, color: '#2D6A4F', marginTop: 4, marginBottom: 20 } }, "Trảng Bom II · Chọn tên để bắt đầu ca"),
       React.createElement('div', { style: { display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16 } },
         shifts.map(s => 
           React.createElement('button', {
