@@ -43,11 +43,17 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [violations, setViolations] = useState([]);
 
-  const [staffMap, setStaffMap] = useState({ "Sáng": ["An", "Bình"], "Tối": ["Chi", "Dũng"] });
+  const [staffMap, setStaffMap] = useState({ "Sáng": ["Nguyễn Trung Tín", "Lương Hiểu Nguyên"], "Tối": ["Đoàn Mộng Chân", "Đặng Sỹ Tú"] });
+  const [staffPasswords, setStaffPasswords] = useState({}); // Lưu mật khẩu của từng nhân viên
   const [pinCode, setPinCode] = useState("1234");
 
   const [myName, setMyName] = useState(localStorage.getItem("pr-my-name") || "");
   const [pickingName, setPickingName] = useState(!localStorage.getItem("pr-my-name"));
+
+  // State popup nhập mật khẩu khi click chọn tên nhân viên
+  const [selectedStaffToLogin, setSelectedStaffToLogin] = useState(null);
+  const [staffPinInput, setStaffPinInput] = useState("");
+  const [staffPinError, setStaffPinError] = useState("");
 
   const [showStaffManager, setShowStaffManager] = useState(true);
 
@@ -76,6 +82,10 @@ function App() {
 
   const [newStaffName, setNewStaffName] = useState("");
 
+  const getRandomPassword = () => {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  };
+
   const fetchData = async () => {
     try {
       const res = await fetch(`${JSONBIN_URL}/latest`, {
@@ -97,9 +107,23 @@ function App() {
         setAreas(record.areas);
         setFArea(record.areas[0]);
       }
-      setStaffMap(record.staffMap || { "Sáng": [], "Tối": [] });
+      const loadedStaffMap = record.staffMap || { "Sáng": [], "Tối": [] };
+      setStaffMap(loadedStaffMap);
+
+      // Khởi tạo mật khẩu ngẫu nhiên cho những nhân viên chưa có mật khẩu
+      let passwords = record.staffPasswords || {};
+      let updated = false;
+      Object.values(loadedStaffMap).forEach(list => {
+        list.forEach(name => {
+          if (!passwords[name]) {
+            passwords[name] = getRandomPassword();
+            updated = true;
+          }
+        });
+      });
+      setStaffPasswords(passwords);
+
       setPinCode(record.pinCode || "1234");
-      
       setLoaded(true);
     } catch (e) {
       console.error(e);
@@ -124,7 +148,7 @@ function App() {
     }
   }, [myName, staffMap, mode, shifts]);
 
-  const persist = async (nextTasks, nextViolations, nextAreas, nextStaffMap, nextShifts, nextPin) => {
+  const persist = async (nextTasks, nextViolations, nextAreas, nextStaffMap, nextShifts, nextPin, nextStaffPasswords) => {
     const payload = {
       tasks: nextTasks !== undefined ? nextTasks : tasks,
       violations: nextViolations !== undefined ? nextViolations : violations,
@@ -132,6 +156,7 @@ function App() {
       staffMap: nextStaffMap !== undefined ? nextStaffMap : staffMap,
       shifts: nextShifts !== undefined ? nextShifts : shifts,
       pinCode: nextPin !== undefined ? nextPin : pinCode,
+      staffPasswords: nextStaffPasswords !== undefined ? nextStaffPasswords : staffPasswords,
     };
 
     setTasks(payload.tasks);
@@ -140,6 +165,7 @@ function App() {
     setStaffMap(payload.staffMap);
     setShifts(payload.shifts);
     setPinCode(payload.pinCode);
+    setStaffPasswords(payload.staffPasswords);
 
     try {
       await fetch(JSONBIN_URL, {
@@ -209,12 +235,15 @@ function App() {
             React.createElement('button', {
               key: name,
               onClick: () => {
-                setMyName(name);
-                localStorage.setItem("pr-my-name", name);
-                setPickingName(false);
+                setSelectedStaffToLogin(name);
+                setStaffPinInput("");
+                setStaffPinError("");
               },
-              style: { padding: '10px', background: '#F8F9F8', border: '1px solid #E0E8E1', borderRadius: 8, fontWeight: 600, color: '#2D6A4F', cursor: 'pointer', textAlign: 'left', paddingLeft: 16 }
-            }, `👤 ${name}`)
+              style: { padding: '10px', background: '#F8F9F8', border: '1px solid #E0E8E1', borderRadius: 8, fontWeight: 600, color: '#2D6A4F', cursor: 'pointer', textAlign: 'left', paddingLeft: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+            }, 
+              <span>👤 {name}</span>,
+              <span style={{ fontSize: 11, color: '#666', background: '#E8F5E9', padding: '2px 6px', borderRadius: 4 }}>Nhập mật khẩu 🔒</span>
+            )
           )
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8 } },
@@ -228,13 +257,61 @@ function App() {
           onClick: () => {
             const val = document.getElementById('custom-name-input').value.trim();
             if(val) {
-              setMyName(val);
-              localStorage.setItem("pr-my-name", val);
-              setPickingName(false);
+              // Nếu tên mới chưa có mật khẩu, gán ngẫu nhiên
+              let nextPasses = { ...staffPasswords };
+              if (!nextPasses[val]) {
+                nextPasses[val] = getRandomPassword();
+              }
+              const currentList = staffMap[shift] || [];
+              let nextMap = { ...staffMap };
+              if (!currentList.includes(val)) {
+                nextMap[shift] = [...currentList, val];
+              }
+              persist(undefined, undefined, undefined, nextMap, undefined, undefined, nextPasses);
+
+              setSelectedStaffToLogin(val);
+              setStaffPinInput("");
+              setStaffPinError("");
             }
           },
           style: { background: '#2D6A4F', color: '#fff', border: 'none', padding: '0 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
         }, "Vào")
+      ),
+
+      // Popup nhập mật khẩu khi click vào tên nhân viên
+      selectedStaffToLogin && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 } },
+        React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.2)', textAlign: 'center' } },
+          React.createElement('h3', { style: { color: '#2D6A4F', marginTop: 0, fontSize: 16 } }, `Nhập mật khẩu cho: ${selectedStaffToLogin}`),
+          React.createElement('div', { style: { fontSize: 12, color: '#666', marginBottom: 10 } }, `(Mật khẩu gợi ý mặc định: ${staffPasswords[selectedStaffToLogin] || '1111'})`),
+          React.createElement('input', {
+            type: 'password',
+            placeholder: '••••',
+            value: staffPinInput,
+            onChange: e => setStaffPinInput(e.target.value),
+            style: { width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9', textAlign: 'center', fontSize: 18, letterSpacing: 6, marginBottom: 10 }
+          }),
+          staffPinError && React.createElement('div', { style: { color: '#E63946', fontSize: 12, marginBottom: 10, fontWeight: 500 } }, staffPinError),
+          React.createElement('div', { style: { display: 'flex', gap: 8 } },
+            React.createElement('button', {
+              onClick: () => { setSelectedStaffToLogin(null); setStaffPinInput(''); setStaffPinError(''); },
+              style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
+            }, "Hủy"),
+            React.createElement('button', {
+              onClick: () => {
+                const correctPin = staffPasswords[selectedStaffToLogin] || "1111";
+                if (staffPinInput === correctPin) {
+                  setMyName(selectedStaffToLogin);
+                  localStorage.setItem("pr-my-name", selectedStaffToLogin);
+                  setPickingName(false);
+                  setSelectedStaffToLogin(null);
+                } else {
+                  setStaffPinError('Mật khẩu không đúng!');
+                }
+              },
+              style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+            }, "Xác nhận")
+          )
+        )
       )
     );
   }
@@ -252,16 +329,11 @@ function App() {
 
   const activeShift = mode === 'manager' ? shift : staffAssignedShift;
 
-  // Lọc dữ liệu theo phân quyền:
-  // - Quản lý: Xem tất cả theo ca đang chọn (activeShift)
-  // - Nhân viên: Chỉ xem việc của ca mình VÀ (được giao riêng cho mình HOẶC giao cho "Cả ca")
   const rawShiftTasks = tasks.filter(t => t.shift === activeShift);
   const visibleTasks = mode === 'manager' 
     ? rawShiftTasks 
     : rawShiftTasks.filter(t => t.assignee.toLowerCase() === myName.toLowerCase() || t.assignee === EVERYONE);
 
-  // - Quản lý: Xem tất cả vi phạm
-  // - Nhân viên: Chỉ xem vi phạm của đúng tên mình trong ca đó
   const visibleViolations = mode === 'manager' 
     ? violations 
     : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase() && v.shift === activeShift);
@@ -298,27 +370,36 @@ function App() {
         onClick: () => setShowStaffManager(!showStaffManager),
         style: { fontSize: 13, fontWeight: 700, color: '#2D6A4F', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }
       }, 
-        React.createElement('span', null, "👥 Quản lý nhân sự Ca ", shift),
+        React.createElement('span', null, "👥 Quản lý nhân sự & Mật khẩu Ca ", shift),
         React.createElement('span', null, showStaffManager ? '▲' : '▼')
       ),
       showStaffManager && React.createElement('div', { style: { marginTop: 8 } },
-        React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 } },
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 } },
           (staffMap[shift] || []).length === 0 ? 
             React.createElement('span', { style: { fontSize: 12, color: '#666', fontStyle: 'italic' } }, "Chưa có nhân viên nào trong ca này.") :
             (staffMap[shift] || []).map(stName => 
-              React.createElement('span', { key: stName, style: { background: '#fff', border: '1px solid #A3D9A5', padding: '3px 10px', borderRadius: 16, fontSize: 12, fontWeight: 600, color: '#2D6A4F', display: 'flex', alignItems: 'center', gap: 6 } },
-                stName,
-                React.createElement('button', {
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    if(confirm(`Xóa nhân viên ${stName} khỏi Ca ${shift}?`)) {
-                      const nextMap = { ...staffMap };
-                      nextMap[shift] = nextMap[shift].filter(n => n !== stName);
-                      persist(undefined, undefined, undefined, nextMap);
-                    }
-                  },
-                  style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontWeight: 700, fontSize: 14, padding: 0 }
-                }, '×')
+              React.createElement('div', { key: stName, style: { background: '#fff', border: '1px solid #A3D9A5', padding: '6px 10px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 } },
+                React.createElement('span', { style: { fontWeight: 600, color: '#2D6A4F' } }, stName),
+                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                  React.createElement('span', { style: { color: '#555' } }, `Mật khẩu: `, React.createElement('strong', { style: { color: '#C62828' } }, staffPasswords[stName] || '1111')),
+                  React.createElement('button', {
+                    onClick: () => {
+                      const nextPasses = { ...staffPasswords, [stName]: getRandomPassword() };
+                      persist(undefined, undefined, undefined, undefined, undefined, undefined, nextPasses);
+                    },
+                    style: { background: '#E8F5E9', border: '1px solid #A3D9A5', color: '#2D6A4F', padding: '2px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer' }
+                  }, "Đổi MK ngẫu nhiên"),
+                  React.createElement('button', {
+                    onClick: () => {
+                      if(confirm(`Xóa nhân viên ${stName} khỏi Ca ${shift}?`)) {
+                        const nextMap = { ...staffMap };
+                        nextMap[shift] = nextMap[shift].filter(n => n !== stName);
+                        persist(undefined, undefined, undefined, nextMap);
+                      }
+                    },
+                    style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontWeight: 700, fontSize: 14 }
+                  }, '×')
+                )
               )
             )
         ),
@@ -340,7 +421,8 @@ function App() {
                 return;
               }
               const nextMap = { ...staffMap, [shift]: [...currentList, val] };
-              persist(undefined, undefined, undefined, nextMap);
+              const nextPasses = { ...staffPasswords, [val]: getRandomPassword() };
+              persist(undefined, undefined, undefined, nextMap, undefined, undefined, nextPasses);
               setNewStaffName('');
             },
             style: { background: '#2D6A4F', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
@@ -795,7 +877,7 @@ function App() {
           React.createElement('button', {
             onClick: () => {
               if(!vAssignee.trim()) { alert("Vui lòng chọn nhân viên vi phạm!"); return; }
-              if(!vText.trim()) { alert("Vui lòng nhập nội dung vi phạm!"); return; }
+              if(!vState.vText && !vText.trim()) { alert("Vui lòng nhập nội dung vi phạm!"); return; }
               const newV = {
                 id: uid(),
                 assignee: vAssignee,
