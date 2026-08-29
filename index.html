@@ -47,8 +47,9 @@ function App() {
   const [staffPasswords, setStaffPasswords] = useState({}); 
   const [pinCode, setPinCode] = useState("1234");
 
-  const [myName, setMyName] = useState(localStorage.getItem("pr-my-name") || "");
-  const [pickingName, setPickingName] = useState(!localStorage.getItem("pr-my-name"));
+  // Luôn bắt đầu bằng trạng thái chưa chọn tên để tránh tự động đăng nhập khi load lại trang
+  const [myName, setMyName] = useState("");
+  const [pickingName, setPickingName] = useState(true);
 
   const [selectedStaffToLogin, setSelectedStaffToLogin] = useState(null);
   const [staffPinInput, setStaffPinInput] = useState("");
@@ -207,6 +208,8 @@ function App() {
     const currentStaffList = staffMap[shift] || [];
     return React.createElement('div', { style: { maxWidth: 420, margin: '60px auto', padding: 28, background: '#fff', borderRadius: 16, boxShadow: '0 8px 30px rgba(0,0,0,0.06)', textAlign: 'center' } },
       React.createElement('div', { style: { fontSize: 24, fontWeight: 700, color: '#2D6A4F', fontFamily: "'Oswald', sans-serif", letterSpacing: 1, marginBottom: 12 } }, "ZEN WORK"),
+      
+      // Nút chuyển đổi ca làm
       React.createElement('div', { style: { display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16 } },
         shifts.map(s => 
           React.createElement('button', {
@@ -225,6 +228,8 @@ function App() {
           }, `Ca ${s}`)
         )
       ),
+
+      // Danh sách nhân viên trong ca
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 190, overflowY: 'auto', marginBottom: 16, paddingRight: 4 } },
         currentStaffList.length === 0 ? 
           React.createElement('div', { style: { color: '#888', fontStyle: 'italic', fontSize: 13, padding: 10 } }, "Chưa có nhân viên trong ca này.") :
@@ -251,7 +256,9 @@ function App() {
             }, name)
           )
       ),
-      React.createElement('div', { style: { display: 'flex', gap: 8 } },
+
+      // Ô nhập tên tùy chỉnh
+      React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 12 } },
         React.createElement('input', {
           type: 'text',
           placeholder: 'Hoặc nhập tên của bạn...',
@@ -282,6 +289,15 @@ function App() {
         }, "Vào")
       ),
 
+      // Nút mở giao diện Đăng nhập Quản lý ngay tại màn hình chọn tên
+      React.createElement('div', { style: { borderTop: '1px solid #E8F5E9', paddingTop: 12 } },
+        React.createElement('button', {
+          onClick: () => setShowPinModal(true),
+          style: { background: '#E8F5E9', border: '1px solid #C8E6C9', color: '#2D6A4F', width: '100%', padding: '10px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }
+        }, "🔐 Đăng nhập Quản lý")
+      ),
+
+      // Modal nhập mật khẩu khi nhân viên bấm vào tên
       selectedStaffToLogin && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 } },
         React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.2)', textAlign: 'center' } },
           React.createElement('h3', { style: { color: '#2D6A4F', marginTop: 0, fontSize: 16 } }, `Xác nhận truy cập: ${selectedStaffToLogin}`),
@@ -303,11 +319,45 @@ function App() {
                 const correctPin = staffPasswords[selectedStaffToLogin] || "1111";
                 if (staffPinInput === correctPin) {
                   setMyName(selectedStaffToLogin);
-                  localStorage.setItem("pr-my-name", selectedStaffToLogin);
                   setPickingName(false);
                   setSelectedStaffToLogin(null);
                 } else {
                   setStaffPinError('Mật khẩu không đúng!');
+                }
+              },
+              style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+            }, "Xác nhận")
+          )
+        )
+      ),
+
+      // Modal mã PIN Quản lý (dùng chung cho cả ngoài màn hình chính và trong ứng dụng)
+      showPinModal && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
+        React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.15)', textAlign: 'center' } },
+          React.createElement('h3', { style: { color: '#2D6A4F', marginTop: 0 } }, "Mã PIN Quản lý"),
+          React.createElement('input', {
+            type: 'password',
+            placeholder: '••••',
+            value: inputPin,
+            onChange: e => setInputPin(e.target.value),
+            style: { width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9', textAlign: 'center', fontSize: 18, letterSpacing: 6, marginBottom: 10 }
+          }),
+          pinError && React.createElement('div', { style: { color: '#E63946', fontSize: 12, marginBottom: 10, fontWeight: 500 } }, pinError),
+          React.createElement('div', { style: { display: 'flex', gap: 8 } },
+            React.createElement('button', {
+              onClick: () => { setShowPinModal(false); setInputPin(''); setPinError(''); },
+              style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
+            }, "Hủy"),
+            React.createElement('button', {
+              onClick: () => {
+                if (inputPin === pinCode) {
+                  setMode('manager');
+                  setShowPinModal(false);
+                  setPickingName(false);
+                  setInputPin('');
+                  setPinError('');
+                } else {
+                  setPinError('Mã PIN không đúng!');
                 }
               },
               style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
@@ -361,7 +411,10 @@ function App() {
             style: { background: '#95D5B2', border: 'none', color: '#1B4332', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
           }, "Quản lý") :
           React.createElement('button', {
-            onClick: () => setMode('staff'),
+            onClick: () => {
+              setMode('staff');
+              setPickingName(true);
+            },
             style: { background: '#E63946', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
           }, "Đăng xuất")
       )
@@ -723,6 +776,7 @@ function App() {
               if (inputPin === pinCode) {
                 setMode('manager');
                 setShowPinModal(false);
+                setPickingName(false);
                 setInputPin('');
                 setPinError('');
               } else {
