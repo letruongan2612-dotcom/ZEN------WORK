@@ -55,6 +55,8 @@ function App() {
   const [staffPinError, setStaffPinError] = useState("");
 
   const [showStaffManager, setShowStaffManager] = useState(true);
+  const [editingStaffName, setEditingStaffName] = useState(null);
+  const [customPassInput, setCustomPassInput] = useState("");
 
   const [formOpen, setFormOpen] = useState(false);
   const [fText, setFText] = useState("");
@@ -380,15 +382,51 @@ function App() {
             (staffMap[shift] || []).map(stName => 
               React.createElement('div', { key: stName, style: { background: '#fff', border: '1px solid #A3D9A5', padding: '6px 10px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 } },
                 React.createElement('span', { style: { fontWeight: 600, color: '#2D6A4F' } }, stName),
-                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-                  React.createElement('span', { style: { color: '#555' } }, `Mật khẩu: `, React.createElement('strong', { style: { color: '#C62828' } }, staffPasswords[stName] || '1111')),
-                  React.createElement('button', {
-                    onClick: () => {
-                      const nextPasses = { ...staffPasswords, [stName]: getRandomPassword() };
-                      persist(undefined, undefined, undefined, undefined, undefined, undefined, nextPasses);
-                    },
-                    style: { background: '#E8F5E9', border: '1px solid #A3D9A5', color: '#2D6A4F', padding: '2px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer' }
-                  }, "Đổi MK ngẫu nhiên"),
+                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+                  editingStaffName === stName ? 
+                    React.createElement(React.Fragment, null,
+                      React.createElement('input', {
+                        type: 'text',
+                        placeholder: 'Mật khẩu mới...',
+                        value: customPassInput,
+                        onChange: e => setCustomPassInput(e.target.value),
+                        style: { width: 90, padding: '2px 6px', fontSize: 12, borderRadius: 4, border: '1px solid #2D6A4F' }
+                      }),
+                      React.createElement('button', {
+                        onClick: () => {
+                          if (customPassInput.trim()) {
+                            const nextPasses = { ...staffPasswords, [stName]: customPassInput.trim() };
+                            persist(undefined, undefined, undefined, undefined, undefined, undefined, nextPasses);
+                            setEditingStaffName(null);
+                            setCustomPassInput('');
+                          } else {
+                            alert("Vui lòng nhập mật khẩu hợp lệ!");
+                          }
+                        },
+                        style: { background: '#2D6A4F', color: '#fff', border: 'none', padding: '2px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600 }
+                      }, "Lưu"),
+                      React.createElement('button', {
+                        onClick: () => { setEditingStaffName(null); setCustomPassInput(''); },
+                        style: { background: '#ccc', color: '#333', border: 'none', padding: '2px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer' }
+                      }, "Hủy")
+                    ) :
+                    React.createElement(React.Fragment, null,
+                      React.createElement('span', { style: { color: '#555' } }, `Mật khẩu: `, React.createElement('strong', { style: { color: '#C62828' } }, staffPasswords[stName] || '1111')),
+                      React.createElement('button', {
+                        onClick: () => {
+                          setEditingStaffName(stName);
+                          setCustomPassInput(staffPasswords[stName] || '');
+                        },
+                        style: { background: '#E0F2F1', border: '1px solid #80CBC4', color: '#00695C', padding: '2px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600 }
+                      }, "Đổi MK"),
+                      React.createElement('button', {
+                        onClick: () => {
+                          const nextPasses = { ...staffPasswords, [stName]: getRandomPassword() };
+                          persist(undefined, undefined, undefined, undefined, undefined, undefined, nextPasses);
+                        },
+                        style: { background: '#E8F5E9', border: '1px solid #A3D9A5', color: '#2D6A4F', padding: '2px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer' }
+                      }, "Ngẫu nhiên")
+                    ),
                   React.createElement('button', {
                     onClick: () => {
                       if(confirm(`Xóa nhân viên ${stName} khỏi Ca ${shift}?`)) {
