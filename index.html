@@ -109,12 +109,10 @@ function App() {
       setStaffMap(loadedStaffMap);
 
       let passwords = record.staffPasswords || {};
-      let updated = false;
       Object.values(loadedStaffMap).forEach(list => {
         list.forEach(name => {
           if (!passwords[name]) {
             passwords[name] = getRandomPassword();
-            updated = true;
           }
         });
       });
