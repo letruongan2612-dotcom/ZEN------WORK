@@ -252,11 +252,19 @@ function App() {
 
   const activeShift = mode === 'manager' ? shift : staffAssignedShift;
 
+  // Lọc dữ liệu theo phân quyền:
+  // - Quản lý: Xem tất cả theo ca đang chọn (activeShift)
+  // - Nhân viên: Chỉ xem việc của ca mình VÀ (được giao riêng cho mình HOẶC giao cho "Cả ca")
+  const rawShiftTasks = tasks.filter(t => t.shift === activeShift);
+  const visibleTasks = mode === 'manager' 
+    ? rawShiftTasks 
+    : rawShiftTasks.filter(t => t.assignee.toLowerCase() === myName.toLowerCase() || t.assignee === EVERYONE);
+
+  // - Quản lý: Xem tất cả vi phạm
+  // - Nhân viên: Chỉ xem vi phạm của đúng tên mình trong ca đó
   const visibleViolations = mode === 'manager' 
     ? violations 
     : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase() && v.shift === activeShift);
-
-  const visibleTasks = tasks.filter(t => t.shift === activeShift);
 
   return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', paddingBottom: 60 } },
     React.createElement('header', { style: { background: '#2D6A4F', color: '#fff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' } },
@@ -372,12 +380,16 @@ function App() {
 
     React.createElement('div', { style: { padding: 16 } },
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 } },
-        React.createElement('h3', { style: { fontSize: 15, color: '#2D6A4F', margin: 0, fontWeight: 700 } }, `Danh sách việc cần làm (Ca ${activeShift})`),
+        React.createElement('h3', { style: { fontSize: 15, color: '#2D6A4F', margin: 0, fontWeight: 700 } }, 
+          mode === 'manager' ? `Tất cả việc cần làm (Ca ${activeShift})` : `Việc được giao của bạn (Ca ${activeShift})`
+        ),
         mode === 'manager' && React.createElement('span', { style: { fontSize: 11, background: '#E8F5E9', color: '#2D6A4F', padding: '2px 8px', borderRadius: 4, fontWeight: 600 } }, "Chế độ Quản lý")
       ),
 
       visibleTasks.length === 0 ?
-        React.createElement('div', { style: { background: '#fff', padding: 28, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9', fontSize: 13 } }, "Chưa có công việc nào trong ca này.") :
+        React.createElement('div', { style: { background: '#fff', padding: 28, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9', fontSize: 13 } }, 
+          mode === 'manager' ? "Chưa có công việc nào trong ca này." : "Bạn không có công việc nào được phân công riêng trong ca này."
+        ) :
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
           visibleTasks.map(t => {
             const isDone = t.status === 'done';
