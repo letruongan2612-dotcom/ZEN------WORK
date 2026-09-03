@@ -10,7 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; }
   body { margin: 0; background: #F0F4F1; font-family: 'Inter', sans-serif; color: #1B4332; }
   .ticket { transition: transform .15s ease, box-shadow .15s ease; }
   .ticket:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
@@ -546,8 +546,8 @@ function App() {
                 alignItems: 'center'
               }
             },
-              React.createElement('div', { style: { flex: 1, paddingRight: 10 } },
-                React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 } },
+              React.createElement('div', { style: { flex: 1, paddingRight: 10, minWidth: 0 } },
+                React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' } },
                   React.createElement('span', { style: { background: '#F0F4F1', color: '#2D6A4F', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, t.area),
                   t.time && React.createElement('span', { style: { color: '#D90429', fontSize: 11, fontWeight: 600 } }, `⏰ ${t.time}`),
                   React.createElement('span', { style: { color: '#555', fontSize: 11 } }, `Giao: ${t.assignee}`)
@@ -555,7 +555,7 @@ function App() {
                 React.createElement('div', { style: { fontSize: 14, fontWeight: 500, color: isDone ? '#777' : '#1B4332', textDecoration: isDone ? 'line-through' : 'none' } }, t.text),
                 isDone && t.doneBy && React.createElement('div', { style: { fontSize: 11, color: '#388E3C', marginTop: 3 } }, `✓ Xong bởi ${t.doneBy}`)
               ),
-              React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+              React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 } },
                 React.createElement('button', {
                   title: isDone ? "Bỏ hoàn thành" : "Đánh dấu đã làm xong",
                   onClick: () => {
@@ -625,21 +625,21 @@ function App() {
                 alignItems: 'center'
               }
             },
-              React.createElement('div', { style: { flex: 1, paddingRight: 10, cursor: 'pointer' }, onClick: () => setSelectedViolation(v) },
-                React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 } },
+              React.createElement('div', { style: { flex: 1, paddingRight: 10, cursor: 'pointer', minWidth: 0 }, onClick: () => setSelectedViolation(v) },
+                React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' } },
                   React.createElement('span', { style: { background: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, `Nhân viên: ${v.assignee}`),
                   React.createElement('span', { style: { color: '#666', fontSize: 11 } }, `Ca ${v.shift}`),
                   v.penalty && React.createElement('span', { style: { color: '#E63946', fontSize: 11, fontWeight: 600 } }, `Phạt: ${v.penalty}`)
                 ),
                 React.createElement('div', { style: { fontSize: 14, fontWeight: 500, color: '#1B4332' } }, v.text),
-                React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 8 } },
+                React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' } },
                   React.createElement('span', { style: { color: isConfirmed ? '#388E3C' : '#E63946', fontWeight: 600 } },
                     isConfirmed ? `✓ Đã xác nhận bởi ${v.confirmedBy || v.assignee}` : '⚠ Chưa xác nhận lỗi'
                   ),
                   v.image && React.createElement('span', { style: { color: '#2D6A4F', textDecoration: 'underline' } }, "Xem hình ảnh minh chứng")
                 )
               ),
-              React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+              React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 } },
                 mode === 'staff' && !isConfirmed && React.createElement('button', {
                   onClick: () => {
                     const nextViolations = violations.map(item => {
