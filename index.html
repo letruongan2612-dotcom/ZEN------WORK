@@ -46,6 +46,21 @@ const TASK_SUGGESTIONS = [
   "Vệ sinh Cafetto bồn P1, P3, P4"
 ];
 
+const getTodayStr = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const formatDate = (dStr) => {
+  if (!dStr) return "";
+  const parts = dStr.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return dStr;
+};
+
 function App() {
   const [loaded, setLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -77,6 +92,7 @@ function App() {
   const [fArea, setFArea] = useState(DEFAULT_AREAS[0]);
   const [fAssignee, setFAssignee] = useState(EVERYONE);
   const [fShift, setFShift] = useState("Sáng");
+  const [fDate, setFDate] = useState(getTodayStr());
   const [fTime, setFTime] = useState("");
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
 
@@ -564,6 +580,7 @@ function App() {
               React.createElement('div', { style: { flex: 1, paddingRight: 10, minWidth: 0 } },
                 React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' } },
                   React.createElement('span', { style: { background: '#F0F4F1', color: '#2D6A4F', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, t.area),
+                  t.date && React.createElement('span', { style: { color: '#2D6A4F', fontSize: 11, fontWeight: 600 } }, `📅 ${formatDate(t.date)}`),
                   t.time && React.createElement('span', { style: { color: '#D90429', fontSize: 11, fontWeight: 600 } }, `⏰ ${t.time}`),
                   React.createElement('span', { style: { color: '#555', fontSize: 11 } }, `Giao: ${t.assignee}`)
                 ),
@@ -812,7 +829,7 @@ function App() {
             }, shifts.map(s => React.createElement('option', { key: s, value: s }, `Ca ${s}`)))
           )
         ),
-        React.createElement('div', { style: { display: 'flex', gap: 10, marginBottom: 16 } },
+        React.createElement('div', { style: { display: 'flex', gap: 10, marginBottom: 12 } },
           React.createElement('div', { style: { flex: 1 } },
             React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#2D6A4F' } }, "Giao cho"),
             React.createElement('select', {
@@ -825,19 +842,28 @@ function App() {
             )
           ),
           React.createElement('div', { style: { flex: 1 } },
-            React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#2D6A4F' } }, "Thời hạn (Tùy chọn)"),
+            React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#2D6A4F' } }, "Ngày làm việc"),
             React.createElement('input', {
-              type: 'text',
-              placeholder: 'Ví dụ: 10:00',
-              value: fTime,
-              onChange: e => setFTime(e.target.value),
-              style: { width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #C8E6C9', fontSize: 13 }
+              type: 'date',
+              value: fDate,
+              onChange: e => setFDate(e.target.value),
+              style: { width: '100%', padding: '7px 8px', borderRadius: 8, border: '1px solid #C8E6C9', fontSize: 13 }
             })
           )
         ),
+        React.createElement('div', { style: { marginBottom: 16 } },
+          React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#2D6A4F' } }, "Thời hạn (Tùy chọn)"),
+          React.createElement('input', {
+            type: 'text',
+            placeholder: 'Ví dụ: 10:00',
+            value: fTime,
+            onChange: e => setFTime(e.target.value),
+            style: { width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #C8E6C9', fontSize: 13 }
+          })
+        ),
         React.createElement('div', { style: { display: 'flex', gap: 8 } },
           React.createElement('button', {
-            onClick: () => { setFormOpen(false); setFText(''); setFTime(''); setShowTaskSuggestions(false); },
+            onClick: () => { setFormOpen(false); setFText(''); setFTime(''); setFDate(getTodayStr()); setShowTaskSuggestions(false); },
             style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
           }, "Hủy"),
           React.createElement('button', {
@@ -852,6 +878,7 @@ function App() {
                 area: fArea,
                 shift: fShift,
                 assignee: fAssignee,
+                date: fDate,
                 time: fTime.trim(),
                 status: 'pending',
                 doneBy: '',
@@ -861,6 +888,7 @@ function App() {
               setFormOpen(false);
               setFText('');
               setFTime('');
+              setFDate(getTodayStr());
               setShowTaskSuggestions(false);
             },
             style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
