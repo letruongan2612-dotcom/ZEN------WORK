@@ -554,17 +554,45 @@ function App() {
                   React.createElement('span', { style: { color: '#555', fontSize: 11 } }, `Giao: ${t.assignee}`)
                 ),
                 React.createElement('div', { style: { fontSize: 14, fontWeight: 500, color: isDone ? '#777' : '#1B4332', textDecoration: isDone ? 'line-through' : 'none' } }, t.text),
-                isDone && t.doneBy && React.createElement('div', { style: { fontSize: 11, color: '#388E3C', marginTop: 3 } }, `✓ Xong bởi ${t.doneBy}`)
+                isDone && React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
+                  t.doneBy && React.createElement('span', { style: { color: '#388E3C' } }, `✓ Xong bởi ${t.doneBy}`),
+                  t.managerApproved ?
+                    React.createElement('span', { style: { background: '#D8F3DC', color: '#1B4332', padding: '2px 6px', borderRadius: 4, fontWeight: 600 } }, "✓ Quản lý đã xác nhận đạt yêu cầu") :
+                    React.createElement('span', { style: { color: '#E67E22', fontStyle: 'italic' } }, "(Chờ quản lý kiểm tra)")
+                )
               ),
               React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 } },
+                mode === 'manager' && isDone && React.createElement('button', {
+                  title: t.managerApproved ? "Bỏ xác nhận đạt" : "Xác nhận công việc đạt yêu cầu",
+                  onClick: () => {
+                    const nextTasks = tasks.map(item => {
+                      if (item.id === t.id) {
+                        return { ...item, managerApproved: !item.managerApproved };
+                      }
+                      return item;
+                    });
+                    persist(nextTasks);
+                  },
+                  style: {
+                    background: t.managerApproved ? '#E8F5E9' : '#2D6A4F',
+                    color: t.managerApproved ? '#2D6A4F' : '#fff',
+                    border: t.managerApproved ? '1px solid #2D6A4F' : 'none',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }
+                }, t.managerApproved ? "✓ Đã duyệt đạt" : "Xác nhận đạt"),
                 React.createElement('button', {
                   title: isDone ? "Bỏ hoàn thành" : "Đánh dấu đã làm xong",
                   onClick: () => {
                     const nextTasks = tasks.map(item => {
                       if (item.id === t.id) {
                         return item.status === 'done' 
-                          ? { ...item, status: 'pending', doneBy: '' }
-                          : { ...item, status: 'done', doneBy: myName };
+                          ? { ...item, status: 'pending', doneBy: '', managerApproved: false }
+                          : { ...item, status: 'done', doneBy: (mode === 'manager' ? 'Quản lý' : myName), managerApproved: (mode === 'manager') };
                       }
                       return item;
                     });
@@ -758,7 +786,8 @@ function App() {
                 assignee: fAssignee,
                 time: fTime.trim(),
                 status: 'pending',
-                doneBy: ''
+                doneBy: '',
+                managerApproved: false
               };
               persist([newTask, ...tasks]);
               setFormOpen(false);
