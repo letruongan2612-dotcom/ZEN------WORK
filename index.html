@@ -283,13 +283,6 @@ function App() {
         }, "Vào")
       ),
 
-      React.createElement('div', { style: { borderTop: '1px solid #E8F5E9', paddingTop: 12 } },
-        React.createElement('button', {
-          onClick: () => setShowPinModal(true),
-          style: { background: '#E8F5E9', border: '1px solid #C8E6C9', color: '#2D6A4F', width: '100%', padding: '10px', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }
-        }, "Đăng nhập Quản lý")
-      ),
-
       selectedStaffToLogin && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 } },
         React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.2)', textAlign: 'center' } },
           React.createElement('h3', { style: { color: '#2D6A4F', marginTop: 0, fontSize: 16 } }, `Xác nhận truy cập: ${selectedStaffToLogin}`),
