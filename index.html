@@ -625,18 +625,37 @@ function App() {
                 alignItems: 'center'
               }
             },
-              React.createElement('div', { style: { flex: 1, paddingRight: 10, cursor: 'pointer', minWidth: 0 }, onClick: () => setSelectedViolation(v) },
+              React.createElement('div', { style: { flex: 1, paddingRight: 10, minWidth: 0 } },
                 React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' } },
                   React.createElement('span', { style: { background: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, `Nhân viên: ${v.assignee}`),
                   React.createElement('span', { style: { color: '#666', fontSize: 11 } }, `Ca ${v.shift}`),
                   v.penalty && React.createElement('span', { style: { color: '#E63946', fontSize: 11, fontWeight: 600 } }, `Phạt: ${v.penalty}`)
                 ),
-                React.createElement('div', { style: { fontSize: 14, fontWeight: 500, color: '#1B4332' } }, v.text),
-                React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' } },
+                // Cắt gọn 1 dòng bằng ellipsis
+                React.createElement('div', { 
+                  style: { 
+                    fontSize: 14, 
+                    fontWeight: 500, 
+                    color: '#1B4332',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '100%'
+                  } 
+                }, v.text),
+                React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' } },
                   React.createElement('span', { style: { color: isConfirmed ? '#388E3C' : '#E63946', fontWeight: 600 } },
                     isConfirmed ? `✓ Đã xác nhận bởi ${v.confirmedBy || v.assignee}` : '⚠ Chưa xác nhận lỗi'
                   ),
-                  v.image && React.createElement('span', { style: { color: '#2D6A4F', textDecoration: 'underline' } }, "Xem hình ảnh minh chứng")
+                  // Thêm mục Xem chi tiết
+                  React.createElement('span', { 
+                    onClick: () => setSelectedViolation(v),
+                    style: { color: '#2D6A4F', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' } 
+                  }, "Xem chi tiết"),
+                  v.image && React.createElement('span', { 
+                    onClick: () => setSelectedViolation(v),
+                    style: { color: '#555', cursor: 'pointer', textDecoration: 'underline' } 
+                  }, "Xem ảnh")
                 )
               ),
               React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 } },
@@ -856,9 +875,20 @@ function App() {
         React.createElement('div', { style: { fontSize: 13, marginBottom: 8, color: '#555' } },
           React.createElement('strong', null, "Nhân viên: "), selectedViolation.assignee, " (Ca ", selectedViolation.shift, ")"
         ),
-        React.createElement('div', { style: { fontSize: 14, fontWeight: 600, color: '#1B4332', marginBottom: 12, background: '#F8F9F8', padding: 10, borderRadius: 6 } },
-          selectedViolation.text
-        ),
+        React.createElement('div', { 
+          style: { 
+            fontSize: 14, 
+            fontWeight: 500, 
+            color: '#1B4332', 
+            marginBottom: 12, 
+            background: '#F8F9F8', 
+            padding: 12, 
+            borderRadius: 6,
+            maxHeight: 220,
+            overflowY: 'auto',
+            whiteSpace: 'pre-wrap'
+          } 
+        }, selectedViolation.text),
         selectedViolation.penalty && React.createElement('div', { style: { fontSize: 13, marginBottom: 12, color: '#E63946' } },
           React.createElement('strong', null, "Hình thức phạt: "), selectedViolation.penalty
         ),
