@@ -385,7 +385,7 @@ function App() {
         onClick: () => setShowStaffManager(!showStaffManager),
         style: { fontSize: 13, fontWeight: 700, color: '#2D6A4F', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }
       }, 
-        React.createElement('span', null, "👥 Quản lý nhân sự & Mật khẩu Ca ", shift),
+        React.createElement('span', null, "Quản lý nhân sự & Mật khẩu Ca ", shift),
         React.createElement('span', null, showStaffManager ? '▲' : '▼')
       ),
       showStaffManager && React.createElement('div', { style: { marginTop: 8 } },
@@ -631,7 +631,6 @@ function App() {
                   React.createElement('span', { style: { color: '#666', fontSize: 11 } }, `Ca ${v.shift}`),
                   v.penalty && React.createElement('span', { style: { color: '#E63946', fontSize: 11, fontWeight: 600 } }, `Phạt: ${v.penalty}`)
                 ),
-                // Cắt gọn 1 dòng bằng ellipsis
                 React.createElement('div', { 
                   style: { 
                     fontSize: 14, 
@@ -647,7 +646,6 @@ function App() {
                   React.createElement('span', { style: { color: isConfirmed ? '#388E3C' : '#E63946', fontWeight: 600 } },
                     isConfirmed ? `✓ Đã xác nhận bởi ${v.confirmedBy || v.assignee}` : '⚠ Chưa xác nhận lỗi'
                   ),
-                  // Thêm mục Xem chi tiết
                   React.createElement('span', { 
                     onClick: () => setSelectedViolation(v),
                     style: { color: '#2D6A4F', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' } 
