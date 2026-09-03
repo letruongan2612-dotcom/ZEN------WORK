@@ -307,4 +307,36 @@ function App() {
               style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
             }, "Hủy"),
             React.createElement('button', {
-              onClick
+              onClick: () => {
+                const correctPin = staffPasswords[selectedStaffToLogin] || "1111";
+                if (staffPinInput === correctPin) {
+                  setMyName(selectedStaffToLogin);
+                  setPickingName(false);
+                  setSelectedStaffToLogin(null);
+                } else {
+                  setStaffPinError('Mật khẩu không đúng!');
+                }
+              },
+              style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+            }, "Xác nhận")
+          )
+        )
+      ),
+
+      showPinModal && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 } },
+        React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.15)', textAlign: 'center' } },
+          React.createElement('h3', { style: { color: '#2D6A4F', marginTop: 0 } }, "Mã PIN Quản lý"),
+          React.createElement('input', {
+            type: 'password',
+            placeholder: '••••',
+            value: inputPin,
+            onChange: e => setInputPin(e.target.value),
+            style: { width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9', textAlign: 'center', fontSize: 18, letterSpacing: 6, marginBottom: 10 }
+          }),
+          pinError && React.createElement('div', { style: { color: '#E63946', fontSize: 12, marginBottom: 10, fontWeight: 500 } }, pinError),
+          React.createElement('div', { style: { display: 'flex', gap: 8 } },
+            React.createElement('button', {
+              onClick: () => { setShowPinModal(false); setInputPin(''); setPinError(''); },
+              style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
+            }, "Hủy"),
+            React.createElement('button', {
