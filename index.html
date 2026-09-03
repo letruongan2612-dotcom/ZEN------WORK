@@ -346,9 +346,10 @@ function App() {
     ? rawShiftTasks 
     : rawShiftTasks.filter(t => t.assignee.toLowerCase() === myName.toLowerCase() || t.assignee === EVERYONE);
 
+  const rawShiftViolations = violations.filter(v => v.shift === activeShift);
   const visibleViolations = mode === 'manager' 
-    ? violations 
-    : violations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase() && v.shift === activeShift);
+    ? rawShiftViolations 
+    : rawShiftViolations.filter(v => v.assignee.toLowerCase() === myName.toLowerCase());
 
   return React.createElement('div', { style: { maxWidth: 680, margin: '0 auto', paddingBottom: 60 } },
     React.createElement('header', { style: { background: '#2D6A4F', color: '#fff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' } },
@@ -600,13 +601,13 @@ function App() {
 
       React.createElement('div', { style: { marginTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
         React.createElement('h3', { style: { fontSize: 15, color: '#2D6A4F', margin: 0, fontWeight: 700 } }, 
-          mode === 'manager' ? "Tất cả Biên bản / Vi phạm" : `Biên bản / Vi phạm của bạn (Ca ${activeShift})`
+          mode === 'manager' ? `Biên bản / Vi phạm (Ca ${activeShift})` : `Biên bản / Vi phạm của bạn (Ca ${activeShift})`
         )
       ),
 
       visibleViolations.length === 0 ?
         React.createElement('div', { style: { marginTop: 10, background: '#fff', padding: 24, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9', fontSize: 13 } }, 
-          mode === 'manager' ? "Chưa ghi nhận lỗi vi phạm nào." : "Bạn không có lỗi vi phạm nào trong ca này."
+          mode === 'manager' ? `Chưa ghi nhận lỗi vi phạm nào trong ca ${activeShift}.` : `Bạn không có lỗi vi phạm nào trong ca ${activeShift}.`
         ) :
         React.createElement('div', { style: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 } },
           visibleViolations.map(v => {
