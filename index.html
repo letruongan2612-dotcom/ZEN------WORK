@@ -31,6 +31,7 @@ const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
 const DEFAULT_SHIFTS = ["Sáng", "Tối"];
 const DEFAULT_AREAS = ["Kho", "Thu ngân", "Pha chế", "Sân", "Sảnh"];
+const DEFAULT_POSITIONS = ["Pha chế", "Thu ngân", "Phục vụ", "Bếp", "Kho", "Tạp vụ", "Quản lý / Giám sát"];
 const EVERYONE = "Cả ca";
 
 const TASK_SUGGESTIONS = [
@@ -74,6 +75,7 @@ function App() {
 
   const [staffMap, setStaffMap] = useState({ "Sáng": ["Nguyễn Trung Tín", "Lương Hiểu Nguyên"], "Tối": ["Đoàn Mộng Chân", "Đặng Sỹ Tú"] });
   const [staffPasswords, setStaffPasswords] = useState({}); 
+  const [staffProfiles, setStaffProfiles] = useState({});
   const [pinCode, setPinCode] = useState("1234");
 
   const [myName, setMyName] = useState("");
@@ -111,6 +113,17 @@ function App() {
 
   const [newStaffName, setNewStaffName] = useState("");
 
+  // Quản lý hồ sơ nhân sự
+  const [selectedStaffProfile, setSelectedStaffProfile] = useState(null);
+  const [profileForm, setProfileForm] = useState({
+    position: "Pha chế",
+    salaryLevel: "Bậc 1",
+    promotionDate: "",
+    kpi1: "",
+    kpi2: "",
+    kpi3: ""
+  });
+
   const getRandomPassword = () => {
     return Math.floor(1000 + Math.random() * 9000).toString();
   };
@@ -147,6 +160,7 @@ function App() {
         });
       });
       setStaffPasswords(passwords);
+      setStaffProfiles(record.staffProfiles || {});
 
       setPinCode(record.pinCode || "1234");
       setLoaded(true);
@@ -173,7 +187,7 @@ function App() {
     }
   }, [myName, staffMap, mode, shifts]);
 
-  const persist = async (nextTasks, nextViolations, nextAreas, nextStaffMap, nextShifts, nextPin, nextStaffPasswords) => {
+  const persist = async (nextTasks, nextViolations, nextAreas, nextStaffMap, nextShifts, nextPin, nextStaffPasswords, nextStaffProfiles) => {
     const payload = {
       tasks: nextTasks !== undefined ? nextTasks : tasks,
       violations: nextViolations !== undefined ? nextViolations : violations,
@@ -182,6 +196,7 @@ function App() {
       shifts: nextShifts !== undefined ? nextShifts : shifts,
       pinCode: nextPin !== undefined ? nextPin : pinCode,
       staffPasswords: nextStaffPasswords !== undefined ? nextStaffPasswords : staffPasswords,
+      staffProfiles: nextStaffProfiles !== undefined ? nextStaffProfiles : staffProfiles,
     };
 
     setTasks(payload.tasks);
@@ -191,6 +206,7 @@ function App() {
     setShifts(payload.shifts);
     setPinCode(payload.pinCode);
     setStaffPasswords(payload.staffPasswords);
+    setStaffProfiles(payload.staffProfiles);
 
     try {
       await fetch(JSONBIN_URL, {
@@ -217,6 +233,19 @@ function App() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const openProfileModal = (name) => {
+    setSelectedStaffProfile(name);
+    const existing = staffProfiles[name] || {};
+    setProfileForm({
+      position: existing.position || "Pha chế",
+      salaryLevel: existing.salaryLevel || "Bậc 1",
+      promotionDate: existing.promotionDate || "",
+      kpi1: existing.kpi1 || "",
+      kpi2: existing.kpi2 || "",
+      kpi3: existing.kpi3 || ""
+    });
   };
 
   if (!loaded) {
@@ -387,7 +416,13 @@ function App() {
         React.createElement('h1', { style: { margin: 0, fontSize: 18, fontFamily: "'Oswald', sans-serif", letterSpacing: 1 } }, "ZEN WORK · TRẢNG BOM II"),
         mode === 'staff' && React.createElement('div', { style: { fontSize: 12, color: '#D8F3DC', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 } }, 
           React.createElement('span', { style: { width: 7, height: 7, background: '#4ADE80', borderRadius: '50%', display: 'inline-block' } }),
-          `Nhân viên: ${myName} (Ca ${activeShift})`,
+          `Nhân viên: `,
+          React.createElement('span', { 
+            onClick: () => openProfileModal(myName), 
+            title: "Bấm để xem hồ sơ của bạn", 
+            style: { textDecoration: 'underline', cursor: 'pointer', fontWeight: 700 } 
+          }, myName),
+          ` (Ca ${activeShift})`,
           React.createElement('button', {
             onClick: () => setPickingName(true),
             title: "Đăng xuất / Đổi tên",
@@ -425,7 +460,13 @@ function App() {
             React.createElement('span', { style: { fontSize: 12, color: '#666', fontStyle: 'italic' } }, "Chưa có nhân viên nào trong ca này.") :
             (staffMap[shift] || []).map(stName => 
               React.createElement('div', { key: stName, style: { background: '#fff', border: '1px solid #A3D9A5', padding: '6px 10px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 } },
-                React.createElement('span', { style: { fontWeight: 600, color: '#2D6A4F' } }, stName),
+                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                  React.createElement('span', { style: { fontWeight: 600, color: '#2D6A4F' } }, stName),
+                  React.createElement('button', {
+                    onClick: () => openProfileModal(stName),
+                    style: { background: '#E8F5E9', border: '1px solid #2D6A4F', color: '#2D6A4F', padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600 }
+                  }, "Hồ sơ")
+                ),
                 React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
                   editingStaffName === stName ? 
                     React.createElement(React.Fragment, null,
@@ -1024,6 +1065,147 @@ function App() {
           onClick: () => setSelectedViolation(null),
           style: { width: '100%', background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
         }, "Đóng")
+      )
+    ),
+
+    // Modal Hồ sơ thông tin nhân sự
+    selectedStaffProfile && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1250 } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 14, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' } },
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #E0E8E1', pb: 10 } },
+          React.createElement('h3', { style: { color: '#2D6A4F', margin: 0, fontSize: 17 } }, `Hồ sơ nhân sự: ${selectedStaffProfile}`),
+          React.createElement('button', {
+            onClick: () => setSelectedStaffProfile(null),
+            style: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888', fontWeight: 700 }
+          }, "✕")
+        ),
+
+        // Khối Thông tin cơ bản
+        React.createElement('div', { style: { background: '#F8F9F8', padding: 12, borderRadius: 8, marginBottom: 12, border: '1px solid #E2EAE3' } },
+          React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#2D6A4F', marginBottom: 8 } }, "THÔNG TIN VỊ TRÍ & BẬC LƯƠNG"),
+          React.createElement('div', { style: { display: 'flex', gap: 10, marginBottom: 8 } },
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 2 } }, "Vị trí chuyên môn"),
+              mode === 'manager' ?
+                React.createElement('select', {
+                  value: profileForm.position,
+                  onChange: e => setProfileForm({ ...profileForm, position: e.target.value }),
+                  style: { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 13 }
+                }, DEFAULT_POSITIONS.map(p => React.createElement('option', { key: p, value: p }, p))) :
+                React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1B4332' } }, profileForm.position || "Chưa thiết lập")
+            ),
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 2 } }, "Bậc lương"),
+              mode === 'manager' ?
+                React.createElement('input', {
+                  type: 'text',
+                  placeholder: 'VD: Bậc 1 / 25k/h',
+                  value: profileForm.salaryLevel,
+                  onChange: e => setProfileForm({ ...profileForm, salaryLevel: e.target.value }),
+                  style: { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 13 }
+                }) :
+                React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1B4332' } }, profileForm.salaryLevel || "Chưa thiết lập")
+            )
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 2 } }, "Ngày lên bậc lương"),
+            mode === 'manager' ?
+              React.createElement('input', {
+                type: 'date',
+                value: profileForm.promotionDate,
+                onChange: e => setProfileForm({ ...profileForm, promotionDate: e.target.value }),
+                style: { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 13 }
+              }) :
+              React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1B4332' } }, formatDate(profileForm.promotionDate) || "Chưa có dữ liệu")
+          )
+        ),
+
+        // Khối KPI 3 tháng
+        React.createElement('div', { style: { background: '#F8F9F8', padding: 12, borderRadius: 8, marginBottom: 12, border: '1px solid #E2EAE3' } },
+          React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#2D6A4F', marginBottom: 8 } }, "KPI 3 THÁNG GẦN NHẤT"),
+          React.createElement('div', { style: { display: 'flex', gap: 8 } },
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement('label', { style: { display: 'block', fontSize: 11, color: '#666', marginBottom: 2 } }, "Tháng gần nhất 1"),
+              mode === 'manager' ?
+                React.createElement('input', {
+                  type: 'text',
+                  placeholder: 'VD: 95đ / A',
+                  value: profileForm.kpi1,
+                  onChange: e => setProfileForm({ ...profileForm, kpi1: e.target.value }),
+                  style: { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 12, textAlign: 'center' }
+                }) :
+                React.createElement('div', { style: { background: '#fff', padding: '6px', borderRadius: 4, textAlign: 'center', fontWeight: 600, fontSize: 12, border: '1px solid #E0E8E1' } }, profileForm.kpi1 || "-")
+            ),
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement('label', { style: { display: 'block', fontSize: 11, color: '#666', marginBottom: 2 } }, "Tháng gần nhất 2"),
+              mode === 'manager' ?
+                React.createElement('input', {
+                  type: 'text',
+                  placeholder: 'VD: 90đ / B',
+                  value: profileForm.kpi2,
+                  onChange: e => setProfileForm({ ...profileForm, kpi2: e.target.value }),
+                  style: { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 12, textAlign: 'center' }
+                }) :
+                React.createElement('div', { style: { background: '#fff', padding: '6px', borderRadius: 4, textAlign: 'center', fontWeight: 600, fontSize: 12, border: '1px solid #E0E8E1' } }, profileForm.kpi2 || "-")
+            ),
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement('label', { style: { display: 'block', fontSize: 11, color: '#666', marginBottom: 2 } }, "Tháng gần nhất 3"),
+              mode === 'manager' ?
+                React.createElement('input', {
+                  type: 'text',
+                  placeholder: 'VD: 98đ / A+',
+                  value: profileForm.kpi3,
+                  onChange: e => setProfileForm({ ...profileForm, kpi3: e.target.value }),
+                  style: { width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #C8E6C9', fontSize: 12, textAlign: 'center' }
+                }) :
+                React.createElement('div', { style: { background: '#fff', padding: '6px', borderRadius: 4, textAlign: 'center', fontWeight: 600, fontSize: 12, border: '1px solid #E0E8E1' } }, profileForm.kpi3 || "-")
+            )
+          )
+        ),
+
+        // Khối Lịch sử vi phạm (Tự động tổng hợp)
+        React.createElement('div', { style: { background: '#F8F9F8', padding: 12, borderRadius: 8, marginBottom: 16, border: '1px solid #E2EAE3' } },
+          React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#E63946', marginBottom: 8 } }, "LỊCH SỬ VI PHẠM ĐÃ GHI NHẬN"),
+          (() => {
+            const staffVList = violations.filter(v => (v.assignee || '').toLowerCase() === selectedStaffProfile.toLowerCase());
+            if (staffVList.length === 0) {
+              return React.createElement('div', { style: { fontSize: 12, color: '#888', fontStyle: 'italic', padding: '6px 0' } }, "Không có biên bản vi phạm nào.");
+            }
+            return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' } },
+              staffVList.map(v => 
+                React.createElement('div', { key: v.id, style: { background: '#fff', padding: '8px 10px', borderRadius: 6, border: '1px solid #FFCDD2', fontSize: 12 } },
+                  React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 2 } },
+                    React.createElement('span', { style: { fontWeight: 600, color: '#C62828' } }, `Ca ${v.shift}`),
+                    React.createElement('span', { style: { color: v.status === 'confirmed' ? '#388E3C' : '#E63946', fontWeight: 600, fontSize: 11 } },
+                      v.status === 'confirmed' ? "✓ Đã xác nhận" : "Chưa xác nhận"
+                    )
+                  ),
+                  React.createElement('div', { style: { color: '#333' } }, v.text),
+                  v.penalty && React.createElement('div', { style: { color: '#C62828', fontSize: 11, marginTop: 2 } }, `Hình thức phạt: ${v.penalty}`)
+                )
+              )
+            );
+          })()
+        ),
+
+        // Nút lưu / đóng
+        React.createElement('div', { style: { display: 'flex', gap: 8 } },
+          React.createElement('button', {
+            onClick: () => setSelectedStaffProfile(null),
+            style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
+          }, "Đóng"),
+          mode === 'manager' && React.createElement('button', {
+            onClick: () => {
+              const nextProfiles = {
+                ...staffProfiles,
+                [selectedStaffProfile]: { ...profileForm }
+              };
+              persist(undefined, undefined, undefined, undefined, undefined, undefined, undefined, nextProfiles);
+              alert("Đã lưu cập nhật hồ sơ thành công!");
+              setSelectedStaffProfile(null);
+            },
+            style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
+          }, "Lưu hồ sơ")
+        )
       )
     )
   );
