@@ -32,6 +32,19 @@ const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 const DEFAULT_SHIFTS = ["Sáng", "Tối"];
 const EVERYONE = "Cả ca";
 
+const TASK_SUGGESTIONS = [
+  "Giặt hoa giả phía ngoài sân",
+  "Lau thành lan can gỗ toàn bộ cửa hàng",
+  "Vệ sinh tủ bánh",
+  "Lau all bình hoa với 2 dãy hoa giả, lau thành bồn và nhặt rác phía trong bồn",
+  "Lau kệ decor trong quầy pha chế (bao gồm các ly decor và màn hình TV)",
+  "Vệ sinh bình chữa cháy và báo biên bản kiểm tra PCCC",
+  "VS thảm",
+  "Vệ sinh máy lạnh",
+  "VS kho, lau tủ lạnh nguyên liệu, tủ đá, kệ trong và ngoài",
+  "Vệ sinh Cafetto bồn P1, P3, P4"
+];
+
 function App() {
   const [loaded, setLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -64,6 +77,7 @@ function App() {
   const [fAssignee, setFAssignee] = useState(EVERYONE);
   const [fShift, setFShift] = useState("Sáng");
   const [fTime, setFTime] = useState("");
+  const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
 
   const [violationFormOpen, setViolationFormOpen] = useState(false);
   const [vText, setVText] = useState("");
@@ -714,17 +728,71 @@ function App() {
 
     // Modal Giao việc
     formOpen && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 } },
-      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: '100%', maxWidth: 420, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: '100%', maxWidth: 460, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' } },
         React.createElement('h3', { style: { color: '#2D6A4F', marginTop: 0 } }, "Giao việc mới"),
         React.createElement('div', { style: { marginBottom: 12 } },
-          React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#2D6A4F' } }, "Nội dung công việc"),
-          React.createElement('textarea', {
-            rows: 3,
-            placeholder: 'Nhập chi tiết công việc...',
-            value: fText,
-            onChange: e => setFText(e.target.value),
-            style: { width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9', fontSize: 14 }
-          })
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 } },
+            React.createElement('label', { style: { fontSize: 12, fontWeight: 600, color: '#2D6A4F' } }, "Nội dung công việc"),
+            React.createElement('span', {
+              onClick: () => setShowTaskSuggestions(!showTaskSuggestions),
+              style: { fontSize: 11, color: '#2D6A4F', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }
+            }, showTaskSuggestions ? "Ẩn gợi ý việc mẫu" : "Chọn việc mẫu có sẵn")
+          ),
+          React.createElement('div', { style: { position: 'relative' } },
+            React.createElement('textarea', {
+              rows: 3,
+              placeholder: 'Nhập chi tiết công việc hoặc bấm chọn việc mẫu có sẵn...',
+              value: fText,
+              onFocus: () => setShowTaskSuggestions(true),
+              onChange: e => setFText(e.target.value),
+              style: { width: '100%', padding: '10px', borderRadius: 8, border: '1px solid #C8E6C9', fontSize: 14 }
+            }),
+            showTaskSuggestions && React.createElement('div', {
+              style: {
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                background: '#fff',
+                border: '1px solid #A3D9A5',
+                borderRadius: 8,
+                boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                zIndex: 1200,
+                maxHeight: 200,
+                overflowY: 'auto'
+              }
+            },
+              React.createElement('div', {
+                style: { padding: '6px 10px', background: '#F0F4F1', fontSize: 11, fontWeight: 700, color: '#2D6A4F', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E0E8E1' }
+              },
+                React.createElement('span', null, "GỢI Ý CÔNG VIỆC CÓ SẴN (BẤM ĐỂ CHỌN)"),
+                React.createElement('button', {
+                  type: 'button',
+                  onClick: (e) => { e.stopPropagation(); setShowTaskSuggestions(false); },
+                  style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontWeight: 700, fontSize: 13 }
+                }, "✕")
+              ),
+              TASK_SUGGESTIONS.map((sug, idx) =>
+                React.createElement('div', {
+                  key: idx,
+                  onClick: () => {
+                    setFText(sug);
+                    setShowTaskSuggestions(false);
+                  },
+                  style: {
+                    padding: '8px 10px',
+                    fontSize: 12,
+                    borderBottom: '1px solid #F0F4F1',
+                    cursor: 'pointer',
+                    color: '#1B4332',
+                    transition: 'background 0.15s'
+                  },
+                  onMouseEnter: e => e.currentTarget.style.background = '#E8F5E9',
+                  onMouseLeave: e => e.currentTarget.style.background = '#fff'
+                }, `• ${sug}`)
+              )
+            )
+          )
         ),
         React.createElement('div', { style: { display: 'flex', gap: 10, marginBottom: 12 } },
           React.createElement('div', { style: { flex: 1 } },
@@ -769,7 +837,7 @@ function App() {
         ),
         React.createElement('div', { style: { display: 'flex', gap: 8 } },
           React.createElement('button', {
-            onClick: () => { setFormOpen(false); setFText(''); setFTime(''); },
+            onClick: () => { setFormOpen(false); setFText(''); setFTime(''); setShowTaskSuggestions(false); },
             style: { flex: 1, background: '#F0F4F1', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', color: '#333' }
           }, "Hủy"),
           React.createElement('button', {
@@ -793,6 +861,7 @@ function App() {
               setFormOpen(false);
               setFText('');
               setFTime('');
+              setShowTaskSuggestions(false);
             },
             style: { flex: 1, background: '#2D6A4F', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }
           }, "Tạo việc")
