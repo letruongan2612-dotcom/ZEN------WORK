@@ -30,6 +30,7 @@ const JSONBIN_KEY = "$2a$10$KEp.t5bZ4ab3EEbMeRmjxOuYe70iE8aHzBT3MmVDm9oy88ge2p1t
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
 const DEFAULT_SHIFTS = ["Sáng", "Tối"];
+const DEFAULT_AREAS = ["Kho", "Thu ngân", "Pha chế", "Sân", "Sảnh"];
 const EVERYONE = "Cả ca";
 
 const TASK_SUGGESTIONS = [
@@ -51,7 +52,7 @@ function App() {
   const [mode, setMode] = useState("staff"); 
   const [shifts, setShifts] = useState(DEFAULT_SHIFTS);
   const [shift, setShift] = useState("Sáng");
-  const [areas, setAreas] = useState(["Quầy Bar", "Thu Ngân", "Pha Chế", "Vệ Sinh Chung"]);
+  const [areas, setAreas] = useState(DEFAULT_AREAS);
   
   const [tasks, setTasks] = useState([]);
   const [violations, setViolations] = useState([]);
@@ -73,7 +74,7 @@ function App() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [fText, setFText] = useState("");
-  const [fArea, setFArea] = useState("Quầy Bar");
+  const [fArea, setFArea] = useState(DEFAULT_AREAS[0]);
   const [fAssignee, setFAssignee] = useState(EVERYONE);
   const [fShift, setFShift] = useState("Sáng");
   const [fTime, setFTime] = useState("");
@@ -115,10 +116,9 @@ function App() {
 
       setTasks(record.tasks || []);
       setViolations(record.violations || []);
-      if (record.areas && record.areas.length) {
-        setAreas(record.areas);
-        setFArea(record.areas[0]);
-      }
+      setAreas(DEFAULT_AREAS);
+      setFArea(DEFAULT_AREAS[0]);
+
       const loadedStaffMap = record.staffMap || { "Sáng": [], "Tối": [] };
       setStaffMap(loadedStaffMap);
 
