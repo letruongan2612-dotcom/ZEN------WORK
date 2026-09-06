@@ -1136,7 +1136,7 @@ function App() {
 
     // Modal Hồ sơ thông tin nhân sự
     selectedStaffProfile && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1250 } },
-      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 14, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' } },
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #E0E8E1', paddingBottom: 10 } },
           React.createElement('h3', { style: { color: '#2D6A4F', margin: 0, fontSize: 17 } }, `Hồ sơ nhân sự: ${selectedStaffProfile}`),
           React.createElement('button', {
@@ -1145,7 +1145,6 @@ function App() {
           }, "✕")
         ),
 
-        // Khối Thông tin cơ bản
         React.createElement('div', { style: { background: '#F8F9F8', padding: 12, borderRadius: 8, marginBottom: 12, border: '1px solid #E2EAE3' } },
           React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#2D6A4F', marginBottom: 8 } }, "THÔNG TIN VỊ TRÍ & BẬC LƯƠNG"),
           React.createElement('div', { style: { display: 'flex', gap: 10, marginBottom: 8 } },
@@ -1185,7 +1184,6 @@ function App() {
           )
         ),
 
-        // Khối KPI 3 tháng
         React.createElement('div', { style: { background: '#F8F9F8', padding: 12, borderRadius: 8, marginBottom: 12, border: '1px solid #E2EAE3' } },
           React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#2D6A4F', marginBottom: 8 } }, "KPI 3 THÁNG GẦN NHẤT"),
           React.createElement('div', { style: { display: 'flex', gap: 8 } },
@@ -1228,7 +1226,6 @@ function App() {
           )
         ),
 
-        // Khối Lịch sử vi phạm (Tự động tổng hợp)
         React.createElement('div', { style: { background: '#F8F9F8', padding: 12, borderRadius: 8, marginBottom: 16, border: '1px solid #E2EAE3' } },
           React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#E63946', marginBottom: 8 } }, "LỊCH SỬ VI PHẠM ĐÃ GHI NHẬN"),
           (() => {
@@ -1253,7 +1250,6 @@ function App() {
           })()
         ),
 
-        // Nút lưu / đóng
         React.createElement('div', { style: { display: 'flex', gap: 8 } },
           React.createElement('button', {
             onClick: () => setSelectedStaffProfile(null),
