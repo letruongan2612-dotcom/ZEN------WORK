@@ -223,7 +223,7 @@ function App() {
 
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-  // LOGIC TỰ ĐỘNG QUÉT VÀ TRỪ 1 ĐIỂM KPI KHI TRỄ HẠN CÔNG VIỆC
+  // Tự động kiểm tra trễ hạn và trừ 1 điểm KPI
   useEffect(() => {
     if (!loaded || tasks.length === 0) return;
 
@@ -237,40 +237,41 @@ function App() {
       nextTasks = nextTasks.map(t => {
         if (t.status !== 'done' && t.time && !t.kpiDeducted) {
           const taskDate = t.date || getTodayStr();
-          const [hStr, mStr] = t.time.split(':');
-          const h = parseInt(hStr, 10);
-          const m = parseInt(mStr, 10);
+          const parts = t.time.split(':');
+          if (parts.length === 2) {
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            if (!isNaN(h) && !isNaN(m)) {
+              const dateParts = taskDate.split('-').map(Number);
+              const deadline = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], h, m, 0);
 
-          if (!isNaN(h) && !isNaN(m)) {
-            const [y, mon, d] = taskDate.split('-').map(Number);
-            const deadline = new Date(y, mon - 1, d, h, m, 0);
+              if (now > deadline) {
+                hasChange = true;
+                const targets = (t.assignee === EVERYONE) 
+                  ? (staffMap[t.shift] || []) 
+                  : [t.assignee];
 
-            if (now > deadline) {
-              hasChange = true;
-              const targets = (t.assignee === EVERYONE) 
-                ? (staffMap[t.shift] || []) 
-                : [t.assignee];
+                targets.forEach(stName => {
+                  const prof = nextProfiles[stName] || {};
+                  const currentKpiStr = prof.kpi1 !== undefined && prof.kpi1 !== "" ? String(prof.kpi1) : "100";
+                  const currentNum = parseInt(currentKpiStr, 10);
+                  const newKpi = isNaN(currentNum) ? 99 : Math.max(0, currentNum - 1);
+                  nextProfiles[stName] = { ...prof, kpi1: String(newKpi) };
 
-              targets.forEach(stName => {
-                const prof = nextProfiles[stName] || {};
-                const currentKpiStr = prof.kpi1 !== undefined && prof.kpi1 !== "" ? String(prof.kpi1) : "100";
-                const currentNum = parseInt(currentKpiStr, 10);
-                const newKpi = isNaN(currentNum) ? 99 : Math.max(0, currentNum - 1);
-                nextProfiles[stName] = { ...prof, kpi1: String(newKpi) };
-
-                newViolations.push({
-                  id: uid(),
-                  text: `Trễ hạn công việc: "${t.text}" (Hạn: ${t.time} ngày ${formatDate(taskDate)})`,
-                  penalty: "Trừ 1 điểm KPI (Hệ thống tự động)",
-                  assignee: stName,
-                  shift: t.shift,
-                  image: "",
-                  status: "confirmed",
-                  confirmedBy: "Hệ thống"
+                  newViolations.push({
+                    id: uid(),
+                    text: `Trễ hạn công việc: "${t.text}" (Hạn: ${t.time} ngày ${formatDate(taskDate)})`,
+                    penalty: "Trừ 1 điểm KPI (Hệ thống tự động)",
+                    assignee: stName,
+                    shift: t.shift,
+                    image: "",
+                    status: "confirmed",
+                    confirmedBy: "Hệ thống"
+                  });
                 });
-              });
 
-              return { ...t, kpiDeducted: true };
+                return { ...t, kpiDeducted: true };
+              }
             }
           }
         }
@@ -771,92 +772,91 @@ function App() {
               )
             );
           })
+        ),
+
+      React.createElement('div', { style: { marginTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+        React.createElement('h3', { style: { fontSize: 15, color: '#2D6A4F', margin: 0, fontWeight: 700 } }, 
+          mode === 'manager' ? `Biên bản / Vi phạm (Ca ${activeShift})` : `Biên bản / Vi phạm của bạn (Ca ${activeShift})`
         )
-    ),
+      ),
 
-    React.createElement('div', { style: { marginTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-      React.createElement('h3', { style: { fontSize: 15, color: '#2D6A4F', margin: 0, fontWeight: 700 } }, 
-        mode === 'manager' ? `Biên bản / Vi phạm (Ca ${activeShift})` : `Biên bản / Vi phạm của bạn (Ca ${activeShift})`
-      )
-    ),
-
-    visibleViolations.length === 0 ?
-      React.createElement('div', { style: { marginTop: 10, background: '#fff', padding: 24, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9', fontSize: 13 } }, 
-        mode === 'manager' ? `Chưa ghi nhận lỗi vi phạm nào trong ca ${activeShift}.` : `Bạn không có lỗi vi phạm nào trong ca ${activeShift}.`
-      ) :
-      React.createElement('div', { style: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 } },
-        visibleViolations.map(v => {
-          const isConfirmed = v.status === 'confirmed';
-          return React.createElement('div', {
-            key: v.id,
-            className: 'ticket',
-            style: {
-              background: '#fff',
-              padding: 14,
-              borderRadius: 10,
-              border: '1px solid #E2EAE3',
-              borderLeft: `4px solid ${isConfirmed ? '#388E3C' : '#E63946'}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }
-          },
-            React.createElement('div', { style: { flex: 1, paddingRight: 10, minWidth: 0 } },
-              React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' } },
-                React.createElement('span', { style: { background: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, `Nhân viên: ${v.assignee}`),
-                React.createElement('span', { style: { color: '#666', fontSize: 11 } }, `Ca ${v.shift}`),
-                v.penalty && React.createElement('span', { style: { color: '#E63946', fontSize: 11, fontWeight: 600 } }, `Phạt: ${v.penalty}`)
-              ),
-              React.createElement('div', { 
-                style: { 
-                  fontSize: 14, 
-                  fontWeight: 500, 
-                  color: '#1B4332',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '100%'
-                } 
-              }, v.text),
-              React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' } },
-                React.createElement('span', { style: { color: isConfirmed ? '#388E3C' : '#E63946', fontWeight: 600 } },
-                  isConfirmed ? `✓ Đã xác nhận bởi ${v.confirmedBy || v.assignee}` : '⚠ Chưa xác nhận lỗi'
+      visibleViolations.length === 0 ?
+        React.createElement('div', { style: { marginTop: 10, background: '#fff', padding: 24, borderRadius: 12, textAlign: 'center', color: '#888', fontStyle: 'italic', border: '1px dashed #C8E6C9', fontSize: 13 } }, 
+          mode === 'manager' ? `Chưa ghi nhận lỗi vi phạm nào trong ca ${activeShift}.` : `Bạn không có lỗi vi phạm nào trong ca ${activeShift}.`
+        ) :
+        React.createElement('div', { style: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 } },
+          visibleViolations.map(v => {
+            const isConfirmed = v.status === 'confirmed';
+            return React.createElement('div', {
+              key: v.id,
+              className: 'ticket',
+              style: {
+                background: '#fff',
+                padding: 14,
+                borderRadius: 10,
+                border: '1px solid #E2EAE3',
+                borderLeft: `4px solid ${isConfirmed ? '#388E3C' : '#E63946'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }
+            },
+              React.createElement('div', { style: { flex: 1, paddingRight: 10, minWidth: 0 } },
+                React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' } },
+                  React.createElement('span', { style: { background: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 } }, `Nhân viên: ${v.assignee}`),
+                  React.createElement('span', { style: { color: '#666', fontSize: 11 } }, `Ca ${v.shift}`),
+                  v.penalty && React.createElement('span', { style: { color: '#E63946', fontSize: 11, fontWeight: 600 } }, `Phạt: ${v.penalty}`)
                 ),
-                React.createElement('span', { 
-                  onClick: () => setSelectedViolation(v),
-                  style: { color: '#2D6A4F', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' } 
-                }, "Xem chi tiết"),
-                v.image && React.createElement('span', { 
-                  onClick: () => setSelectedViolation(v),
-                  style: { color: '#555', cursor: 'pointer', textDecoration: 'underline' } 
-                }, "Xem ảnh")
-              )
-            ),
-            React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 } },
-              mode === 'staff' && !isConfirmed && React.createElement('button', {
-                onClick: () => {
-                  const nextViolations = violations.map(item => {
-                    if (item.id === v.id) {
-                      return { ...item, status: 'confirmed', confirmedBy: myName };
+                React.createElement('div', { 
+                  style: { 
+                    fontSize: 14, 
+                    fontWeight: 500, 
+                    color: '#1B4332',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '100%'
+                  } 
+                }, v.text),
+                React.createElement('div', { style: { fontSize: 11, marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' } },
+                  React.createElement('span', { style: { color: isConfirmed ? '#388E3C' : '#E63946', fontWeight: 600 } },
+                    isConfirmed ? `✓ Đã xác nhận bởi ${v.confirmedBy || v.assignee}` : '⚠ Chưa xác nhận lỗi'
+                  ),
+                  React.createElement('span', { 
+                    onClick: () => setSelectedViolation(v),
+                    style: { color: '#2D6A4F', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' } 
+                  }, "Xem chi tiết"),
+                  v.image && React.createElement('span', { 
+                    onClick: () => setSelectedViolation(v),
+                    style: { color: '#555', cursor: 'pointer', textDecoration: 'underline' } 
+                  }, "Xem ảnh")
+                )
+              ),
+              React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 } },
+                mode === 'staff' && !isConfirmed && React.createElement('button', {
+                  onClick: () => {
+                    const nextViolations = violations.map(item => {
+                      if (item.id === v.id) {
+                        return { ...item, status: 'confirmed', confirmedBy: myName };
+                      }
+                      return item;
+                    });
+                    persist(undefined, nextViolations);
+                  },
+                  style: { background: '#2D6A4F', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
+                }, "Xác nhận lỗi"),
+                mode === 'manager' && React.createElement('button', {
+                  onClick: () => {
+                    if(confirm("Xóa biên bản vi phạm này?")) {
+                      persist(undefined, violations.filter(item => item.id !== v.id));
                     }
-                    return item;
-                  });
-                  persist(undefined, nextViolations);
-                },
-                style: { background: '#2D6A4F', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: 'pointer' }
-              }, "Xác nhận lỗi"),
-              mode === 'manager' && React.createElement('button', {
-                onClick: () => {
-                  if(confirm("Xóa biên bản vi phạm này?")) {
-                    persist(undefined, violations.filter(item => item.id !== v.id));
-                  }
-                },
-                style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontSize: 16, padding: '0 4px' }
-              }, '×')
-            )
-          );
-        })
-      )
+                  },
+                  style: { background: 'none', border: 'none', color: '#E63946', cursor: 'pointer', fontSize: 16, padding: '0 4px' }
+                }, '×')
+              )
+            );
+          })
+        )
     ),
 
     // Modal Giao việc
@@ -1145,7 +1145,7 @@ function App() {
 
     // Modal Hồ sơ thông tin nhân sự
     selectedStaffProfile && React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1250 } },
-      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 14, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' } },
+      React.createElement('div', { style: { background: '#fff', padding: 24, borderRadius: 12, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' } },
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #E0E8E1', paddingBottom: 10 } },
           React.createElement('h3', { style: { color: '#2D6A4F', margin: 0, fontSize: 17 } }, `Hồ sơ nhân sự: ${selectedStaffProfile}`),
           React.createElement('button', {
