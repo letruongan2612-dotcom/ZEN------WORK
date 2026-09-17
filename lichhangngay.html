@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quản Lý Lịch Trình</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .completed { text-decoration: line-through; color: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-md flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-4 text-center sticky top-0 z-10">
+            <h1 class="text-xl font-bold">Quản Lý Lịch Trình</h1>
+        </header>
+
+        <!-- Thẻ điều hướng chính -->
+        <div class="flex border-b">
+            <button onclick="switchMainTab('canhan')" id="tab-canhan" class="flex-1 py-3 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-colors">Cá nhân</button>
+            <button onclick="switchMainTab('congviec')" id="tab-congviec" class="flex-1 py-3 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-colors">Công việc</button>
+            <button onclick="switchMainTab('giadinh')" id="tab-giadinh" class="flex-1 py-3 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-colors">Gia đình</button>
+        </div>
+
+        <!-- Thẻ điều hướng phụ (Dành cho 2 cửa hàng) -->
+        <div id="subtabs" class="hidden flex bg-gray-50 border-b text-sm">
+            <button onclick="switchSubTab('cuahang1')" id="subtab-cuahang1" class="flex-1 py-2 text-center font-medium text-gray-500 border-b-2 border-transparent">Cửa hàng 1</button>
+            <button onclick="switchSubTab('cuahang2')" id="subtab-cuahang2" class="flex-1 py-2 text-center font-medium text-gray-500 border-b-2 border-transparent">Cửa hàng 2</button>
+        </div>
+
+        <div class="p-4 flex-1 overflow-y-auto">
+            <!-- Chọn mốc thời gian & Nút Làm Mới -->
+            <div class="mb-4 flex items-end justify-between gap-2">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Thời gian:</label>
+                    <select id="timeFilter" onchange="renderTasks()" class="w-full p-2 border rounded-lg bg-gray-50 focus:outline-none focus:border-blue-500">
+                        <option value="hangngay">Hàng ngày</option>
+                        <option value="1-5">Ngày 1 - 5</option>
+                        <option value="6-10">Ngày 6 - 10</option>
+                        <option value="11-15">Ngày 11 - 15</option>
+                        <option value="16-20">Ngày 16 - 20</option>
+                        <option value="21-25">Ngày 21 - 25</option>
+                        <option value="26-31">Ngày 26 - 31</option>
+                    </select>
+                </div>
+                
+                <!-- Nút Làm Mới -->
+                <button onclick="resetCurrentTasks()" class="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 h-[42px] active:bg-blue-200 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <span class="text-sm font-medium whitespace-nowrap">Làm mới</span>
+                </button>
+            </div>
+
+            <!-- Khu vực nhập công việc mới -->
+            <div class="flex gap-2 mb-6">
+                <input type="text" id="taskInput" placeholder="Nhập công việc..." class="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500" onkeypress="handleEnter(event)">
+                <button onclick="addTask()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium active:bg-blue-700 transition">Thêm</button>
+            </div>
+
+            <!-- Danh sách công việc -->
+            <ul id="taskList" class="space-y-3 pb-6">
+                <!-- Công việc sẽ được chèn vào đây qua JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let tasks = JSON.parse(localStorage.getItem('myChecklist')) || [];
+        let currentMainTab = 'canhan';
+        let currentSubTab = 'cuahang1';
+        
+        switchMainTab('canhan');
+
+        function switchMainTab(tabName) {
+            currentMainTab = tabName;
+            
+            ['canhan', 'congviec', 'giadinh'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.remove('text-blue-600', 'border-blue-600');
+                document.getElementById(`tab-${t}`).classList.add('text-gray-500', 'border-transparent');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('text-blue-600', 'border-blue-600');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-500', 'border-transparent');
+
+            const subtabs = document.getElementById('subtabs');
+            if (tabName === 'congviec') {
+                subtabs.classList.remove('hidden');
+                switchSubTab(currentSubTab);
+            } else {
+                subtabs.classList.add('hidden');
+                renderTasks();
+            }
+        }
+
+        function switchSubTab(subTabName) {
+            currentSubTab = subTabName;
+            
+            ['cuahang1', 'cuahang2'].forEach(t => {
+                document.getElementById(`subtab-${t}`).classList.remove('text-blue-600', 'border-blue-600');
+                document.getElementById(`subtab-${t}`).classList.add('text-gray-500', 'border-transparent');
+            });
+            document.getElementById(`subtab-${subTabName}`).classList.add('text-blue-600', 'border-blue-600');
+            document.getElementById(`subtab-${subTabName}`).classList.remove('text-gray-500', 'border-transparent');
+            
+            renderTasks();
+        }
+
+        function getCurrentCategory() {
+            if (currentMainTab === 'congviec') return currentSubTab;
+            return currentMainTab;
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') addTask();
+        }
+
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const text = input.value.trim();
+            const timeFilter = document.getElementById('timeFilter').value;
+            
+            if (text !== '') {
+                tasks.push({
+                    id: Date.now(),
+                    text: text,
+                    category: getCurrentCategory(),
+                    time: timeFilter,
+                    completed: false
+                });
+                input.value = '';
+                saveAndRender();
+            }
+        }
+
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveAndRender();
+            }
+        }
+
+        function deleteTask(id) {
+            if(confirm("Bạn có chắc chắn muốn xóa?")) {
+                tasks = tasks.filter(t => t.id !== id);
+                saveAndRender();
+            }
+        }
+
+        // Hàm Làm mới (Bỏ đánh dấu tất cả trong danh sách hiện tại)
+        function resetCurrentTasks() {
+            const currentCat = getCurrentCategory();
+            const currentTime = document.getElementById('timeFilter').value;
+            
+            // Kiểm tra xem có việc nào đang hoàn thành không
+            const hasCompletedTasks = tasks.some(t => t.category === currentCat && t.time === currentTime && t.completed);
+            
+            if (!hasCompletedTasks) {
+                alert("Chưa có công việc nào được đánh dấu hoàn thành!");
+                return;
+            }
+
+            if(confirm("Bạn muốn làm mới (bỏ dấu tích) tất cả công việc trong danh sách này để làm lại?")) {
+                tasks.forEach(t => {
+                    if (t.category === currentCat && t.time === currentTime) {
+                        t.completed = false; // Gỡ hoàn thành
+                    }
+                });
+                saveAndRender();
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('myChecklist', JSON.stringify(tasks));
+            renderTasks();
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+            const currentCat = getCurrentCategory();
+            const currentTime = document.getElementById('timeFilter').value;
+            
+            list.innerHTML = '';
+            
+            const filteredTasks = tasks.filter(t => t.category === currentCat && t.time === currentTime);
+            
+            if (filteredTasks.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-400 mt-6 text-sm">Chưa có công việc nào trong mục này.</p>';
+                return;
+            }
+
+            filteredTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = "flex items-center justify-between p-3 bg-gray-50 border rounded-lg shadow-sm";
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 flex-1" onclick="toggleTask(${task.id})">
+                        <div class="w-6 h-6 flex flex-shrink-0 items-center justify-center border-2 rounded-md ${task.completed ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}">
+                            ${task.completed ? '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                        </div>
+                        <span class="text-lg ${task.completed ? 'completed' : ''}">${task.text}</span>
+                    </div>
+                    <button onclick="deleteTask(${task.id})" class="ml-2 text-red-400 p-2 hover:bg-red-50 rounded-full transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                `;
+                list.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
